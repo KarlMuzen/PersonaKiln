@@ -1,7 +1,7 @@
 export const LIMITS = {
   NAME: 100,
-  SHORT_TEXT: 2_000,        // personality, scenario, creator, character_version
-  LONG_TEXT: 50_000,        // description, first_mes, system_prompt, post_history_instructions
+  SHORT_TEXT: 2_000,        // creator, character_version, lorebook comment and description
+  LONG_TEXT: 50_000,        // description, personality, scenario, first_mes, system_prompt, post_history_instructions
   MES_EXAMPLE: 100_000,
   TAGS: 50,
   TAG_LENGTH: 50,

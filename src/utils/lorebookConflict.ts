@@ -164,10 +164,10 @@ export function analyzeLorebookConflicts(
 
   // 1. Detect Priority / Depth Shadowing among colliding entries
   collisions.forEach((col) => {
-    // Sort colliding entries by weight desc, then order asc
+    // Sort colliding entries by weight desc, then order desc (higher order wins, as in SillyTavern)
     const sorted = [...col.entries].sort((a, b) => {
       if (a.weight !== b.weight) return b.weight - a.weight;
-      return a.order - b.order;
+      return b.order - a.order;
     });
 
     const winner = sorted[0];
@@ -253,7 +253,7 @@ export function analyzeLorebookConflicts(
 
   const sortedForBudget = [...allFlatEntries].sort((a, b) => {
     if (a.weight !== b.weight) return b.weight - a.weight;
-    return a.order - b.order;
+    return b.order - a.order;
   });
 
   let runningTokens = 0;
