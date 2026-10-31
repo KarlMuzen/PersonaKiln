@@ -46,7 +46,7 @@ interface RunItem {
 }
 
 export const EnhancerView: React.FC = () => {
-  const { activeCard, activeCardRecord, profiles, setActiveTab, setPreFlightAuditOpen } = useCardStore();
+  const { activeCard, activeCardRecord, profiles, activeProfileUuid, setActiveTab, setPreFlightAuditOpen } = useCardStore();
   const [selectedScenarioRun, setSelectedScenarioRun] = useState<{ scenarioId: string; profileId: string } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [enhancerRationale, setEnhancerRationale] = useState<string>('');
@@ -86,10 +86,10 @@ export const EnhancerView: React.FC = () => {
     const run = allRuns.find(r => r.scenarioId === selectedScenarioRun.scenarioId && r.profileId === selectedScenarioRun.profileId);
     if (!run) return;
     
-    const nativeProfile = profiles.find(p => ['anthropic', 'gemini', 'google', 'openai', 'openrouter'].includes(p.provider)) || profiles[0];
-    
-    if (!nativeProfile) {
-       useDialogStore.getState().showAlert("No connection profiles available to run Enhancer.", "Missing Profile", "warning");
+    const activeProfile = profiles.find((p) => p.uuid === activeProfileUuid);
+
+    if (!activeProfile) {
+       useDialogStore.getState().showAlert("Please select an active connection profile in Settings to use AI features.", "No Profile", "warning");
        return;
     }
 
@@ -126,7 +126,7 @@ ${JSON.stringify({
 
 Propose field updates as structured patches.`;
 
-      const response = await sendLLMRequest(nativeProfile, {
+      const response = await sendLLMRequest(activeProfile, {
         systemPrompt: "You are an expert creative writing and character card AI assistant specializing in card optimization.",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
@@ -391,8 +391,8 @@ Propose field updates as structured patches.`;
                        />
                      )}
 
-                     {/* Generated Output / Raw Fallback View */}
-                     {enhancerRationale && (
+                     {/* Raw output is shown only when structured patches could not be read */}
+                     {enhancerRationale && parseNotice && (
                        <div className="bg-void-900 border border-knight-700/40 rounded-2xl p-5 space-y-4 animate-fadeIn">
                           <div className="flex items-center justify-between pb-2 border-b border-knight-700/40">
                             <h3 className="text-sm font-semibold text-maroon-300 flex items-center gap-1.5">
