@@ -8,9 +8,13 @@ Usage (from repo root, after `npm ci && npx vite build`):
 What it does: writes a small CCv3 test card to a temp file, imports it through
 the Library file input, edits and saves it, reloads to prove it persisted in
 IndexedDB, walks Library/Details/Lorebook/Prompt/Assist/Test/Enhancer/Settings/
-Guide at 390x844 (touch), exports the card as JSON, and repeats the load/import/
-open checks at 1280x800. It prints one JSON object with a pass/fail line per
-check and exits 1 on any failure. A failing check saves a screenshot in RF_OUT.
+Guide at 390x844 (touch), exports the card as JSON, then proves a full backup
+round trip: Settings > Backup exports the database (API keys unticked), a fresh
+browser context restores it and the card with its saved edit is back, and
+restoring the same file again leaves the card count unchanged. It repeats the
+load/import/open checks at 1280x800. It prints one JSON object with a pass/fail
+line per check and exits 1 on any failure. A failing check saves a screenshot
+in RF_OUT.
 """
 import asyncio, json, os, tempfile
 from playwright.async_api import async_playwright, TimeoutError
@@ -241,6 +245,99 @@ async def main():
                 return f"fail: exported description ends {str(data.get('description', ''))[-100:]!r}"
             return "pass"
         await run_check(pg, "export json", export_json)
+
+        # --- backup round trip (fresh context restores the edited card) ---
+        backup_path = {"path": None}
+
+        async def count_visible_cards(page):
+            n = 0
+            for loc in await page.get_by_text(NAME, exact=True).all():
+                if await loc.is_visible():
+                    n += 1
+            return n
+
+        async def wait_visible_title(page, timeout_ms=10000):
+            # The name also appears in hidden status lines, so waiting on the
+            # first match can wait forever; wait for any visible title instead.
+            waited = 0
+            while waited < timeout_ms:
+                if await count_visible_cards(page) >= 1:
+                    return
+                await page.wait_for_timeout(200)
+                waited += 200
+            raise AssertionError("no visible card title after waiting")
+
+        async def backup_export():
+            await pg.get_by_role("button", name="Settings", exact=True).first.click()
+            await settle(pg)
+            await pg.get_by_role("button", name="Export Backup (JSON)").first.click()
+            await pg.get_by_role("dialog", name="Export Backup Warning").wait_for(state="visible", timeout=10000)
+            box = pg.get_by_label("Include API keys in this backup")
+            if await box.is_checked():
+                await box.uncheck()
+            await pg.get_by_text("Export Backup (no API keys)", exact=True).wait_for(state="visible", timeout=5000)
+            try:
+                async with pg.expect_download(timeout=15000) as dl:
+                    await pg.get_by_role("button", name="Export JSON").first.click()
+                download = await dl.value
+            except TimeoutError:
+                return "fail: no backup download after confirming the export"
+            path = os.path.join(OUT, "smoke-backup.json")
+            await download.save_as(path)
+            backup_path["path"] = path
+            return "pass"
+        await run_check(pg, "backup export", backup_export)
+
+        rp = None
+        restored_count = {"n": None}
+
+        async def backup_restore():
+            nonlocal rp
+            if not backup_path["path"]:
+                return "fail: no backup file from the export check"
+            rp = await (await new_ctx(390, 844, True)).new_page()
+            attach(rp)
+            await rp.goto(URL)
+            await rp.wait_for_timeout(1200)
+            await rp.get_by_role("button", name="Library", exact=True).first.wait_for(state="visible", timeout=10000)
+            await rp.get_by_text("No Character Cards Yet", exact=True).wait_for(state="visible", timeout=10000)
+            await rp.get_by_role("button", name="Settings", exact=True).first.click()
+            await settle(rp)
+            await rp.get_by_label("Restore Database (JSON / ZIP)").set_input_files(backup_path["path"])
+            await rp.get_by_text("Database restored!", exact=False).first.wait_for(state="visible", timeout=15000)
+            await rp.get_by_role("button", name="OK").first.click()
+            await settle(rp)
+            await rp.get_by_role("button", name="Library", exact=True).first.click()
+            await wait_visible_title(rp)
+            restored_count["n"] = await count_visible_cards(rp)
+            if restored_count["n"] != 1:
+                return f"fail: {restored_count['n']} cards in the Library after restore"
+            await open_card(rp)
+            value = await rp.get_by_role("textbox", name="Describe the character's physical appearance, backstory, traits, and role.").input_value()
+            if not value.endswith(" smoke"):
+                return f"fail: restored description ends {value[-100:]!r}"
+            name_value = await rp.get_by_role("textbox", name="e.g. Aeliana the Starlight Weaver").input_value()
+            if name_value != NAME:
+                return f"fail: restored name field shows {name_value[:100]!r}"
+            return "pass"
+        await run_check(rp or pg, "backup restore", backup_restore)
+
+        async def backup_restore_again():
+            if rp is None or not backup_path["path"]:
+                return "fail: no restored page or backup file from the restore check"
+            await rp.get_by_role("button", name="Settings", exact=True).first.click()
+            await settle(rp)
+            await rp.get_by_label("Restore Database (JSON / ZIP)").set_input_files(backup_path["path"])
+            await rp.get_by_text("Database restored!", exact=False).first.wait_for(state="visible", timeout=15000)
+            await rp.get_by_role("button", name="OK").first.click()
+            await settle(rp)
+            await rp.get_by_role("button", name="Library", exact=True).first.click()
+            await wait_visible_title(rp)
+            n = await count_visible_cards(rp)
+            if n != restored_count["n"]:
+                return f"fail: card count changed from {restored_count['n']} to {n} on re-restore"
+            return "pass"
+        await run_check(rp or pg, "backup restore again", backup_restore_again)
 
         # --- desktop run, fresh context ---
         d = await (await new_ctx(1280, 800, False)).new_page()
