@@ -94,8 +94,10 @@ describe('backup - restoreFullBackup security and merge behavior', () => {
     await db.settings.put({ key: 'crypto_recovery_wrapped_key', value: 'LOCAL_RECOVERY_WRAP_123' });
     await db.settings.put({ key: 'crypto_recovery_confirmed', value: true });
 
-    // Seed local database with an existing card that shares uuid 'card-111'
-    await db.cards.add(createMockStoredCard('card-111', 'Local Existing Card 1', ['local']));
+    // Seed local database with an existing card that shares uuid 'card-111'.
+    // Its date is older than the incoming card's, so the backup still
+    // replaces it under the strictly-newer rule.
+    await db.cards.add({ ...createMockStoredCard('card-111', 'Local Existing Card 1', ['local']), modification_date: 1000 });
 
     // Run restore in merge mode
     const payloadJson = JSON.stringify(mockIncomingBackup);

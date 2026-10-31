@@ -129,6 +129,24 @@ export async function createFullBackupZip(includeApiKeys: boolean = false): Prom
   });
 }
 
+// Merge-mode date rule: only a strictly newer backup copy replaces the local
+// one. Dates arrive in seconds (the app) or milliseconds (imports), so both
+// are normalised to seconds first. Missing, zero, negative or non-numeric
+// dates count as 0, which never beats a local date.
+function toSeconds(v: unknown): number {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 0;
+  if (v > 100_000_000_000) return Math.floor(v / 1000);
+  return v;
+}
+
+function backupIsNewer(local: unknown, incoming: unknown): boolean {
+  return toSeconds(incoming) > toSeconds(local);
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 export const MAX_BACKUP_PAYLOAD_SIZE = 200 * 1024 * 1024; // 200 MB
 
 export async function parseBackupPayload(input: string | Uint8Array): Promise<FullBackupData> {
@@ -163,6 +181,10 @@ export async function restoreFullBackup(
   lorebooksCount: number;
   profilesCount: number;
   cardsSkipped: number;
+  cardsKept: number;
+  lorebooksKept: number;
+  lorebooksSkipped: number;
+  settingsKept: number;
   errors: string[];
 }> {
   let backupData: FullBackupData | null = null;
@@ -249,8 +271,12 @@ export async function restoreFullBackup(
 
   let cardsCount = 0;
   let cardsSkipped = 0;
+  let cardsKept = 0;
   let lorebooksCount = 0;
+  let lorebooksKept = 0;
+  let lorebooksSkipped = 0;
   let profilesCount = 0;
+  let settingsKept = 0;
 
   await db.transaction('rw', [db.cards, db.lorebooks, db.connectionProfiles, db.settings], async () => {
     if (mode === 'overwrite') {
@@ -270,6 +296,7 @@ export async function restoreFullBackup(
       for (const card of backupData.cards) {
         if (!card.uuid) {
           cardsSkipped++;
+          errors.push(`Card '${card.name || 'unnamed'}' has no ID and was skipped.`);
           continue;
         }
         try {
@@ -305,19 +332,30 @@ export async function restoreFullBackup(
 
           const existing = await db.cards.where('uuid').equals(card.uuid).first();
           if (existing && existing.id) {
-            if (mode === 'overwrite' || mode === 'merge') {
-              await db.cards.update(existing.id, {
-                name: card.name,
-                tags: card.tags || [],
-                creator: card.creator || '',
-                creation_date: card.creation_date,
-                modification_date: card.modification_date,
-                order: card.order,
-                cardData: card.cardData,
-                embeddedAssets: card.embeddedAssets,
-                snapshots: card.snapshots,
-              });
+            // An existing card is replaced only by a strictly newer backup
+            // copy; an older, equal or undated copy leaves the local card
+            // untouched. In overwrite mode the table was just cleared, so
+            // only duplicates inside the file itself reach this branch.
+            if (backupIsNewer(existing.modification_date, card.modification_date)) {
+              const update: Partial<StoredCard> = {};
+              if (card.name !== undefined) update.name = card.name;
+              update.tags = card.tags || [];
+              update.creator = card.creator || '';
+              if (card.creation_date !== undefined) update.creation_date = card.creation_date;
+              if (card.modification_date !== undefined) update.modification_date = card.modification_date;
+              if (card.order !== undefined) update.order = card.order;
+              if (card.cardData !== undefined) update.cardData = card.cardData;
+              if (card.snapshots !== undefined) update.snapshots = card.snapshots;
+              if (card.avatarUrl !== undefined) update.avatarUrl = card.avatarUrl;
+              if (card.testSuites !== undefined) update.testSuites = card.testSuites;
+              if (card.scenarios !== undefined) update.scenarios = card.scenarios;
+              if (card.variantOf !== undefined) update.variantOf = card.variantOf;
+              if (card.variantLabel !== undefined) update.variantLabel = card.variantLabel;
+              if (Object.keys(restoredAssets).length > 0) update.embeddedAssets = restoredAssets;
+              await db.cards.update(existing.id, update);
               cardsCount++;
+            } else {
+              cardsKept++;
             }
           } else {
             const rec = { ...card };
@@ -334,23 +372,33 @@ export async function restoreFullBackup(
 
     if (Array.isArray(backupData.lorebooks)) {
       for (const lb of backupData.lorebooks) {
-        if (!lb.uuid) continue;
+        if (!lb.uuid) {
+          lorebooksSkipped++;
+          errors.push(`Lorebook '${lb.name || 'unnamed'}' has no ID and was skipped.`);
+          continue;
+        }
         try {
           const existing = await db.lorebooks.where('uuid').equals(lb.uuid).first();
           if (existing && existing.id) {
-            await db.lorebooks.update(existing.id, {
-              name: lb.name,
-              description: lb.description,
-              lorebook: lb.lorebook,
-              updatedAt: lb.updatedAt,
-            });
+            if (backupIsNewer(existing.updatedAt, lb.updatedAt)) {
+              const update: Record<string, unknown> = {};
+              if (lb.name !== undefined) update.name = lb.name;
+              if (lb.description !== undefined) update.description = lb.description;
+              if (lb.lorebook !== undefined) update.lorebook = lb.lorebook;
+              if (lb.updatedAt !== undefined) update.updatedAt = lb.updatedAt;
+              await db.lorebooks.update(existing.id, update);
+              lorebooksCount++;
+            } else {
+              lorebooksKept++;
+            }
           } else {
             const rec = { ...lb };
             delete rec.id;
             await db.lorebooks.add(rec);
+            lorebooksCount++;
           }
-          lorebooksCount++;
         } catch (err: any) {
+          lorebooksSkipped++;
           errors.push(`Lorebook '${lb.name || lb.uuid}' skipped: ${err.message}`);
         }
       }
@@ -388,15 +436,26 @@ export async function restoreFullBackup(
             }
           }
 
-          if (keyNeedsReentry) {
-            errors.push(`Connection profile '${prof.name || prof.uuid}': API key needs to be re-entered.`);
-          }
-
           const existing = await db.connectionProfiles.where('uuid').equals(prof.uuid).first();
           if (existing && existing.id) {
+            // Never put an undefined value in a profile update: Dexie treats
+            // undefined in an update as a delete, which is how a keyless
+            // backup used to erase a saved local API key. With the apiKey
+            // key removed, the local key stays untouched.
+            for (const key of Object.keys(rec)) {
+              if ((rec as unknown as Record<string, unknown>)[key] === undefined) {
+                delete (rec as unknown as Record<string, unknown>)[key];
+              }
+            }
             await db.connectionProfiles.update(existing.id, rec);
+            if (keyNeedsReentry && !existing.apiKey) {
+              errors.push(`Connection profile '${prof.name || prof.uuid}': API key needs to be re-entered.`);
+            }
           } else {
             await db.connectionProfiles.add(rec);
+            if (keyNeedsReentry) {
+              errors.push(`Connection profile '${prof.name || prof.uuid}': API key needs to be re-entered.`);
+            }
           }
           profilesCount++;
         } catch (err: any) {
@@ -418,10 +477,34 @@ export async function restoreFullBackup(
           ) {
             continue;
           }
-          try {
-            await db.settings.put(st);
-          } catch (err: any) {
-            // ignore
+          if (mode === 'merge') {
+            // Merge mode never overwrites a local setting. assistant_chats
+            // merges per card uuid with the local chat winning; anything
+            // else that already exists locally is kept and counted.
+            const local = await db.settings.get(st.key);
+            try {
+              if (st.key === 'assistant_chats' && isPlainObject(st.value) && local && isPlainObject(local.value)) {
+                const merged = { ...st.value, ...local.value };
+                const addsUuid = Object.keys(merged).some((k) => !(k in (local.value as Record<string, unknown>)));
+                if (addsUuid) {
+                  await db.settings.put({ key: st.key, value: merged });
+                } else {
+                  settingsKept++;
+                }
+              } else if (local) {
+                settingsKept++;
+              } else {
+                await db.settings.put(st);
+              }
+            } catch (err: any) {
+              errors.push(`Setting '${st.key}' could not be saved: ${err.message}`);
+            }
+          } else {
+            try {
+              await db.settings.put(st);
+            } catch (err: any) {
+              // ignore
+            }
           }
         }
       }
@@ -436,5 +519,5 @@ export async function restoreFullBackup(
     await store.loadProfilesFromDb();
   }
 
-  return { cardsCount, lorebooksCount, profilesCount, cardsSkipped, errors };
+  return { cardsCount, lorebooksCount, profilesCount, cardsSkipped, cardsKept, lorebooksKept, lorebooksSkipped, settingsKept, errors };
 }
