@@ -44,6 +44,32 @@ describe('cardSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('allows personality and scenario up to 50,000 characters, and still caps creator at 2,000', () => {
+    const atCap = CharacterCardV3StorageSchema.safeParse({
+      ...validCard,
+      data: { ...validCard.data, personality: 'A'.repeat(50000), scenario: 'B'.repeat(50000) },
+    });
+    expect(atCap.success).toBe(true);
+
+    const overPersonality = CharacterCardV3StorageSchema.safeParse({
+      ...validCard,
+      data: { ...validCard.data, personality: 'A'.repeat(50001) },
+    });
+    expect(overPersonality.success).toBe(false);
+
+    const overScenario = CharacterCardV3StorageSchema.safeParse({
+      ...validCard,
+      data: { ...validCard.data, scenario: 'B'.repeat(50001) },
+    });
+    expect(overScenario.success).toBe(false);
+
+    const overCreator = CharacterCardV3StorageSchema.safeParse({
+      ...validCard,
+      data: { ...validCard.data, creator: 'C'.repeat(2001) },
+    });
+    expect(overCreator.success).toBe(false);
+  });
+
   it('rejects extensions payload cap exceeded', () => {
     const hugeExtensions = { data: 'A'.repeat(250000) }; // Max is 200,000 bytes
     const invalidCard = {

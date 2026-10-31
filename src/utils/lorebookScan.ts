@@ -261,7 +261,7 @@ export function scanLorebook(
     if (a.weight !== b.weight) {
       return b.weight - a.weight;
     }
-    return a.order - b.order;
+    return b.order - a.order;
   });
 
   const finalResults: ScanResult[] = [];

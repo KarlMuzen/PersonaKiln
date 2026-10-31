@@ -97,20 +97,21 @@ describe('scanLorebook', () => {
     expect(result.activatedEntries[0].entry.content).toBe('Recent');
   });
 
-  it('respects token_budget and insertion_order truncation', () => {
+  it('respects token_budget with higher insertion_order surviving first', () => {
     // Our mock tokenizer counts tokens as string length.
-    // Budget is 20.
+    // Budget is 20. The higher order survives; the lower drops first.
     const lb = createMockLorebook([
-      { keys: ['magic'], content: '123456789012345', insertion_order: 10 }, // 15 tokens. Total 15.
-      { keys: ['ancient'], content: '1234567890', insertion_order: 20 },      // 10 tokens. Would make total 25 > 20, so budget exhausted.
-      { keys: ['sword'], content: '12345', insertion_order: 30 }              // 5 tokens. Never reached because loop stops.
+      { keys: ['magic'], content: '123456789012345', insertion_order: 10 }, // 15 tokens. Dropped: it is reached last and would exceed the budget.
+      { keys: ['ancient'], content: '1234567890', insertion_order: 20 },      // 10 tokens. Second: 5 + 10 = 15.
+      { keys: ['sword'], content: '12345', insertion_order: 30 }              // 5 tokens. First: total 5.
     ]);
     lb.token_budget = 20;
-    
+
     const result = scanLorebook(lb, chatHistory);
-    // Should include insertion_order 10 only, because 20 exceeds and stops the loop.
-    expect(result.activatedEntries).toHaveLength(1);
-    expect(result.activatedEntries.map(e => e.entry.insertion_order)).toEqual([10]);
+    // Entries 30 and 20 fit (5 + 10 = 15 tokens); the loop stops at the
+    // first overflow, so the entry with order 10 drops.
+    expect(result.activatedEntries).toHaveLength(2);
+    expect(result.activatedEntries.map(e => e.entry.insertion_order)).toEqual([30, 20]);
     expect(result.totalTokensConsumed).toBe(15);
   });
 });
