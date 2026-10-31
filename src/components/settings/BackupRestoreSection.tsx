@@ -20,6 +20,27 @@ export interface BackupRestoreSectionProps {
   loadProfilesFromDb: () => Promise<void>;
 }
 
+export function buildRestoreMessage(res: Awaited<ReturnType<typeof restoreFullBackup>>): string {
+  let msg = `Database restored! Restored ${res.cardsCount} cards, ${res.lorebooksCount} lorebooks, and ${res.profilesCount} profiles.`;
+  const keptParts: string[] = [];
+  if (res.cardsKept > 0) keptParts.push(`${res.cardsKept} cards`);
+  if (res.lorebooksKept > 0) keptParts.push(`${res.lorebooksKept} lorebooks`);
+  if (res.settingsKept > 0) keptParts.push(`${res.settingsKept} settings`);
+  if (keptParts.length > 0) {
+    msg += `\nKept on this device (same or newer): ${keptParts.join(', ')}.`;
+  }
+  const skippedParts: string[] = [];
+  if (res.cardsSkipped > 0) skippedParts.push(`${res.cardsSkipped} cards`);
+  if (res.lorebooksSkipped > 0) skippedParts.push(`${res.lorebooksSkipped} lorebooks`);
+  if (skippedParts.length > 0) {
+    msg += `\nSkipped: ${skippedParts.join(', ')} (no ID, or could not be saved).`;
+  }
+  if (res.errors && res.errors.length > 0) {
+    msg += `\n\nNotes / Warnings:\n${res.errors.join('\n')}`;
+  }
+  return msg;
+}
+
 export const BackupRestoreSection: React.FC<BackupRestoreSectionProps> = ({
   profiles,
   loadCardsFromDb,
@@ -94,13 +115,7 @@ export const BackupRestoreSection: React.FC<BackupRestoreSectionProps> = ({
 
       await loadCardsFromDb();
       await loadProfilesFromDb();
-      let msg = `Database restored! Restored ${res.cardsCount} cards, ${res.lorebooksCount} lorebooks, and ${res.profilesCount} profiles.`;
-      if (res.cardsSkipped > 0) {
-        msg += ` (${res.cardsSkipped} record(s) skipped due to validation errors).`;
-      }
-      if (res.errors && res.errors.length > 0) {
-        msg += `\n\nNotes / Warnings:\n${res.errors.join('\n')}`;
-      }
+      const msg = buildRestoreMessage(res);
       await useDialogStore.getState().showAlert(msg, 'Restore Successful', 'info');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
