@@ -109,9 +109,10 @@ export const BackupRestoreSection: React.FC<BackupRestoreSectionProps> = ({
   const handleFullBackupRestore = async (file: File) => {
     try {
       const isZip = file.name.endsWith('.zip');
-      const res = isZip
-        ? await restoreFullBackup(new Uint8Array(await file.arrayBuffer()), 'merge')
-        : await restoreFullBackup(await file.text(), 'merge');
+      const input = isZip
+        ? new Uint8Array(await file.arrayBuffer())
+        : await file.text();
+      const res = await useCardStore.getState().runDbCardWrite(() => restoreFullBackup(input, 'merge'));
 
       await loadCardsFromDb();
       await loadProfilesFromDb();
