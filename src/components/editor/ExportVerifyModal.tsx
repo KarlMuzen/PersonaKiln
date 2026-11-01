@@ -126,8 +126,7 @@ export const ExportVerifyModal: React.FC<ExportVerifyModalProps> = ({
             {/* Modal Footer Actions */}
             <div className="p-4 border-t border-knight-700/40 bg-void-900 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-knight-400">
-                <span className="text-maroon-400 font-semibold">Spec Compliant PNG:</span> Contains full
-                Character Card V3/V2 data.
+                <span className="text-maroon-400 font-semibold">Visual PNG:</span> the card data is embedded in the image file.
               </div>
 
               <div className="flex items-center gap-2">
@@ -330,8 +329,7 @@ export const ExportVerifyModal: React.FC<ExportVerifyModalProps> = ({
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>
-                      100% Round-Trip Verification Passed — Exported binary matches live card state with zero data
-                      loss.
+                      Round-trip check passed. This app read the exported file back and every compared field matches the live card.
                     </span>
                   </>
                 ) : (
@@ -488,8 +486,7 @@ export const ExportVerifyModal: React.FC<ExportVerifyModalProps> = ({
               <div className="text-xs text-knight-400">
                 {verifyReport.verified ? (
                   <span className="text-emerald-400">
-                    File verified intact. You can safely share or import this card across SillyTavern and other
-                    tools.
+                    This check only shows that this app can read its own export back. It does not test other apps, including SillyTavern.
                   </span>
                 ) : (
                   <span className="text-amber-400">
