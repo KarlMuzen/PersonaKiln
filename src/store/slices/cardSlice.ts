@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand';
 import { db, type StoredCard, type StoredLorebook, type CrucibleVector, type CrucibleScenario, DEFAULT_CRUCIBLE_VECTORS } from '../../db';
 import type { CharacterCardV3 } from '../../schemas/cardSchema';
 import { createNewDefaultCard } from '../../utils/cardDefaults';
+import { describeStorageError } from '../../utils/storageErrors';
 import { useToastStore } from '../useToastStore';
 import type { CardStore, CardSlice, UndoState } from './types';
 
@@ -247,49 +248,59 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
   },
 
   saveActiveCard: async () => {
-    const { activeCardUuid, activeCard, activeCardEmbeddedAssets, isAssetsDirty } = get();
-    if (!activeCardUuid || !activeCard) return;
+    try {
+      const { activeCardUuid, activeCard, activeCardEmbeddedAssets, isAssetsDirty } = get();
+      if (!activeCardUuid || !activeCard) return;
 
-    const now = Math.floor(Date.now() / 1000);
-    const updatedCard: CharacterCardV3 = {
-      ...activeCard,
-      data: {
-        ...activeCard.data,
-        modification_date: now,
-      },
-    };
-
-    const existingRecord = await db.cards.where('uuid').equals(activeCardUuid).first();
-    if (existingRecord && existingRecord.id) {
-      const updatePayload: Partial<StoredCard> = {
-        name: updatedCard.data.name,
-        tags: updatedCard.data.tags || [],
-        creator: updatedCard.data.creator || '',
-        modification_date: now,
-        cardData: updatedCard,
+      const now = Math.floor(Date.now() / 1000);
+      const updatedCard: CharacterCardV3 = {
+        ...activeCard,
+        data: {
+          ...activeCard.data,
+          modification_date: now,
+        },
       };
 
-      if (isAssetsDirty) {
-        updatePayload.embeddedAssets = activeCardEmbeddedAssets;
+      const existingRecord = await db.cards.where('uuid').equals(activeCardUuid).first();
+      if (existingRecord && existingRecord.id) {
+        const updatePayload: Partial<StoredCard> = {
+          name: updatedCard.data.name,
+          tags: updatedCard.data.tags || [],
+          creator: updatedCard.data.creator || '',
+          modification_date: now,
+          cardData: updatedCard,
+        };
+
+        if (isAssetsDirty) {
+          updatePayload.embeddedAssets = activeCardEmbeddedAssets;
+        }
+
+        await db.cards.update(existingRecord.id, updatePayload);
+
+        if (isAssetsDirty) {
+          set({ isAssetsDirty: false });
+        }
+
+        await db.settings.put({
+          key: `editor_history_${activeCardUuid}`,
+          value: {
+            undoStack: get().undoStack,
+            redoStack: get().redoStack,
+          },
+        });
       }
 
-      await db.cards.update(existingRecord.id, updatePayload);
-
-      if (isAssetsDirty) {
-        set({ isAssetsDirty: false });
-      }
-
-      await db.settings.put({
-        key: `editor_history_${activeCardUuid}`,
-        value: {
-          undoStack: get().undoStack,
-          redoStack: get().redoStack,
-        },
+      set({ activeCard: updatedCard });
+      await get().loadCardsFromDb();
+    } catch (err) {
+      console.error('Failed to save card metadata:', err);
+      set({ saveState: 'error' });
+      useToastStore.getState().showToast({
+        title: 'Failed to save card',
+        message: describeStorageError(err),
+        type: 'error',
       });
     }
-
-    set({ activeCard: updatedCard });
-    await get().loadCardsFromDb();
   },
 
   saveActiveCardMetadata: async () => {
@@ -333,7 +344,7 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
       set({ saveState: 'error' });
       useToastStore.getState().showToast({
         title: 'Failed to save card',
-        message: err instanceof Error ? err.message : 'Database error',
+        message: describeStorageError(err),
         type: 'error',
       });
     }
@@ -643,14 +654,18 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
     if (overwriteUuid) {
       const existing = await db.cards.where('uuid').equals(overwriteUuid).first();
       if (existing && existing.id) {
-        await db.cards.update(existing.id, {
-          name: card.data.name || 'Imported Card',
-          tags: card.data.tags || [],
-          creator: card.data.creator || '',
-          modification_date: Math.floor(Date.now() / 1000),
-          cardData: card,
-          embeddedAssets,
-        });
+        try {
+          await db.cards.update(existing.id, {
+            name: card.data.name || 'Imported Card',
+            tags: card.data.tags || [],
+            creator: card.data.creator || '',
+            modification_date: Math.floor(Date.now() / 1000),
+            cardData: card,
+            embeddedAssets,
+          });
+        } catch (err) {
+          throw new Error(describeStorageError(err), { cause: err });
+        }
         await get().loadCardsFromDb();
         return overwriteUuid;
       }
@@ -671,7 +686,11 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
       testSuites: DEFAULT_CRUCIBLE_VECTORS,
     };
 
-    await db.cards.add(record);
+    try {
+      await db.cards.add(record);
+    } catch (err) {
+      throw new Error(describeStorageError(err), { cause: err });
+    }
     await get().loadCardsFromDb();
     return uuid;
   },

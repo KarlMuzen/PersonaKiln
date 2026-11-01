@@ -198,7 +198,13 @@ export const GalleryView: React.FC = () => {
       if (choice === 'overwrite') overwriteUuid = match.existing.uuid;
     }
 
-    await importCardRecord(card, embeddedAssets, overwriteUuid);
+    try {
+      await importCardRecord(card, embeddedAssets, overwriteUuid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed.';
+      setImportError(message);
+      return false;
+    }
     setImportSuccessMessage(`Successfully imported "${card.data.name}" from pasted text!`);
     setIsPasteModalOpen(false);
     return true;
@@ -289,98 +295,114 @@ export const GalleryView: React.FC = () => {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        try {
 
-        if (file.size > 50 * 1024 * 1024) {
-          const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-          const errMsg = `File "${file.name}" exceeds the maximum allowed size of 50MB (${sizeMB}MB).`;
-          collectedWarnings.push(errMsg);
-          if (files.length === 1) {
-            throw new Error(errMsg);
+          if (file.size > 50 * 1024 * 1024) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+            const errMsg = `File "${file.name}" exceeds the maximum allowed size of 50MB (${sizeMB}MB).`;
+            collectedWarnings.push(errMsg);
+            if (files.length === 1) {
+              throw new Error(errMsg);
+            }
+            continue;
           }
-          continue;
-        }
 
-        const fileNameLower = file.name.toLowerCase();
-        const isZip =
-          fileNameLower.endsWith('.zip') ||
-          file.type === 'application/zip' ||
-          file.type === 'application/x-zip-compressed';
+          const fileNameLower = file.name.toLowerCase();
+          const isZip =
+            fileNameLower.endsWith('.zip') ||
+            file.type === 'application/zip' ||
+            file.type === 'application/x-zip-compressed';
 
-        if (isZip) {
-          const buffer = new Uint8Array(await file.arrayBuffer());
-          let importedAsCharx = false;
+          if (isZip) {
+            const buffer = new Uint8Array(await file.arrayBuffer());
+            let importedAsCharx = false;
 
-          // 1. Try single CHARX card import first
-          try {
-            const result = await importCardData(buffer, file.name);
-            if (result.card) {
-              await importOne(result.card, result.embeddedAssets, file.name);
+            // 1. Try single CHARX card import first. Only the read is inside
+            // the swallowing try; importing the card happens after it, so a
+            // save failure is reported instead of falling through to bulk
+            // extraction as if the file were not a single CHARX.
+            let singleResult: Awaited<ReturnType<typeof importCardData>> | null = null;
+            try {
+              singleResult = await importCardData(buffer, file.name);
+            } catch {
+              // Not a single CHARX file, proceed to bulk zip extraction
+            }
+            if (singleResult?.card) {
+              await importOne(singleResult.card, singleResult.embeddedAssets, file.name);
               importedAsCharx = true;
-              if (result.warnings && result.warnings.length > 0) {
-                collectedWarnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
+              if (singleResult.warnings && singleResult.warnings.length > 0) {
+                collectedWarnings.push(...singleResult.warnings.map((w) => `${file.name}: ${w}`));
               }
-            } else if (result.lorebook) {
+            } else if (singleResult?.lorebook) {
               warnLorebookFile(file.name);
               importedAsCharx = true;
             }
-          } catch {
-            // Not a single CHARX file, proceed to bulk zip extraction
-          }
 
-          // 2. Extract bulk ZIP archive contents
-          if (!importedAsCharx) {
-            try {
-              const zip = await JSZip.loadAsync(buffer);
-              const entries = Object.keys(zip.files);
-              let cardsFoundInZip = 0;
+            // 2. Extract bulk ZIP archive contents
+            if (!importedAsCharx) {
+              try {
+                const zip = await JSZip.loadAsync(buffer);
+                const entries = Object.keys(zip.files);
+                let cardsFoundInZip = 0;
 
-              for (const relativePath of entries) {
-                const zipEntry = zip.files[relativePath];
-                if (zipEntry.dir || relativePath.startsWith('__MACOSX') || relativePath.includes('/.')) continue;
+                for (const relativePath of entries) {
+                  const zipEntry = zip.files[relativePath];
+                  if (zipEntry.dir || relativePath.startsWith('__MACOSX') || relativePath.includes('/.')) continue;
 
-                const lower = relativePath.toLowerCase();
-                if (lower.endsWith('.png') || lower.endsWith('.json') || lower.endsWith('.charx')) {
-                  try {
-                    const entryBytes = await zipEntry.async('uint8array');
-                    const result = await importCardData(entryBytes, relativePath);
-                    if (result.card) {
-                      await importOne(result.card, result.embeddedAssets, relativePath);
-                      cardsFoundInZip++;
-                      if (result.warnings && result.warnings.length > 0) {
-                        collectedWarnings.push(...result.warnings.map((w) => `${relativePath}: ${w}`));
+                  const lower = relativePath.toLowerCase();
+                  if (lower.endsWith('.png') || lower.endsWith('.json') || lower.endsWith('.charx')) {
+                    try {
+                      const entryBytes = await zipEntry.async('uint8array');
+                      const result = await importCardData(entryBytes, relativePath);
+                      if (result.card) {
+                        try {
+                          await importOne(result.card, result.embeddedAssets, relativePath);
+                        } catch (importErr) {
+                          const message = importErr instanceof Error ? importErr.message : String(importErr);
+                          collectedWarnings.push(`${relativePath}: not imported: ${message || 'Import failed.'}`);
+                          continue;
+                        }
+                        cardsFoundInZip++;
+                        if (result.warnings && result.warnings.length > 0) {
+                          collectedWarnings.push(...result.warnings.map((w) => `${relativePath}: ${w}`));
+                        }
+                      } else if (result.lorebook) {
+                        warnLorebookFile(relativePath);
                       }
-                    } else if (result.lorebook) {
-                      warnLorebookFile(relativePath);
+                    } catch (err) {
+                      console.warn(`Error reading card in zip entry ${relativePath}:`, err);
                     }
-                  } catch (err) {
-                    console.warn(`Error reading card in zip entry ${relativePath}:`, err);
                   }
                 }
-              }
 
-              if (cardsFoundInZip === 0) {
-                collectedWarnings.push(`No valid character cards found inside ZIP archive "${file.name}".`);
+                if (cardsFoundInZip === 0) {
+                  collectedWarnings.push(`No valid character cards found inside ZIP archive "${file.name}".`);
+                }
+              } catch (zipErr) {
+                const zipMsg = zipErr instanceof Error ? zipErr.message : String(zipErr);
+                console.error(`Failed to unpack zip ${file.name}:`, zipErr);
+                throw new Error(`Failed to extract ZIP archive "${file.name}": ${zipMsg}`);
               }
-            } catch (zipErr) {
-              const zipMsg = zipErr instanceof Error ? zipErr.message : String(zipErr);
-              console.error(`Failed to unpack zip ${file.name}:`, zipErr);
-              throw new Error(`Failed to extract ZIP archive "${file.name}": ${zipMsg}`);
+            }
+          } else {
+            // Standard single PNG / JSON / CHARX file
+            const buffer = new Uint8Array(await file.arrayBuffer());
+            const result = await importCardData(buffer, file.name);
+
+            if (result.warnings && result.warnings.length > 0) {
+              collectedWarnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
+            }
+
+            if (result.card) {
+              await importOne(result.card, result.embeddedAssets, file.name);
+            } else if (result.lorebook) {
+              warnLorebookFile(file.name);
             }
           }
-        } else {
-          // Standard single PNG / JSON / CHARX file
-          const buffer = new Uint8Array(await file.arrayBuffer());
-          const result = await importCardData(buffer, file.name);
-
-          if (result.warnings && result.warnings.length > 0) {
-            collectedWarnings.push(...result.warnings.map((w) => `${file.name}: ${w}`));
-          }
-
-          if (result.card) {
-            await importOne(result.card, result.embeddedAssets, file.name);
-          } else if (result.lorebook) {
-            warnLorebookFile(file.name);
-          }
+        } catch (err) {
+          if (files.length === 1) throw err;
+          const message = err instanceof Error ? err.message : String(err);
+          collectedWarnings.push(`${file.name}: not imported: ${message || 'Import failed.'}`);
         }
       }
 
