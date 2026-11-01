@@ -72,7 +72,7 @@ export async function renderTrustBadgeCanvasBytes(
   ctx.fillStyle = '#f43f5e';
   ctx.font = 'bold 12px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('CARDCRUCIBLE', width - 40, 54);
+  ctx.fillText('ROLEPLAY FORGE', width - 40, 54);
   ctx.textAlign = 'left';
 
   // 3. Character Name Title
@@ -218,12 +218,12 @@ export async function renderTrustBadgeCanvasBytes(
   // 6. Bottom Footer Bar
   ctx.fillStyle = '#71717a';
   ctx.font = '500 10px system-ui, sans-serif';
-  ctx.fillText('GENERATED VIA CARDCRUCIBLE • AUTOMATED BENCHMARK SUITE', 36, height - 32);
+  ctx.fillText('GENERATED VIA ROLEPLAY FORGE • AUTOMATED BENCHMARK SUITE', 36, height - 32);
 
   ctx.fillStyle = '#f43f5e';
   ctx.font = 'bold 11px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('EXPORTED WITH CardCrucible', width - 40, height - 32);
+  ctx.fillText('EXPORTED WITH Roleplay Forge', width - 40, height - 32);
   ctx.textAlign = 'left';
 
   // Convert canvas to PNG Blob -> Uint8Array

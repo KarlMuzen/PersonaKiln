@@ -26,7 +26,7 @@ export function usePWAUpdate(): void {
       toastShownRef.current = true;
       useToastStore.getState().showToast({
         title: 'Update Available',
-        message: 'A new version of CardCrucible is available. Reload to update.',
+        message: 'A new version of Roleplay Forge is available. Reload to update.',
         type: 'info',
         duration: 0,
         action: {

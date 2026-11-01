@@ -139,14 +139,14 @@ export function stripRemovedProfileFields<T extends object>(prof: T): T {
   return copy;
 }
 
-export class CardCrucibleDatabase extends Dexie {
+export class RoleplayForgeDatabase extends Dexie {
   cards!: Table<StoredCard, number>;
   lorebooks!: Table<StoredLorebook, number>;
   connectionProfiles!: Table<ConnectionProfile, number>;
   settings!: Table<AppSetting, string>;
 
   constructor() {
-    super('CardCrucibleDB');
+    super('RoleplayForgeDB');
 
     this.version(1).stores({
       cards: '++id, uuid, name, order, *tags, creator, creation_date, modification_date',
@@ -304,4 +304,4 @@ export class CardCrucibleDatabase extends Dexie {
   }
 }
 
-export const db = new CardCrucibleDatabase();
+export const db = new RoleplayForgeDatabase();

@@ -1,6 +1,6 @@
 /**
  * Consolidated binary, hex, and base64 encoding helpers.
- * Single source of truth for buffer and string conversions across CardCrucible.
+ * Single source of truth for buffer and string conversions across Roleplay Forge.
  */
 
 /**

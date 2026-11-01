@@ -150,7 +150,7 @@ export async function renderVisualCardCanvasBytes({
   // 2. Top Header Bar
   ctx.fillStyle = '#f43f5e';
   ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText('CARDCRUCIBLE', 48, 52);
+  ctx.fillText('ROLEPLAY FORGE', 48, 52);
 
   ctx.fillStyle = '#a1a1aa';
   ctx.font = '500 12px system-ui, sans-serif';
@@ -401,7 +401,7 @@ export async function renderVisualCardCanvasBytes({
   ctx.fillStyle = '#f43f5e';
   ctx.font = 'bold 11px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('EXPORTED WITH CardCrucible', 752, 1168);
+  ctx.fillText('EXPORTED WITH Roleplay Forge', 752, 1168);
   ctx.textAlign = 'left';
 
   // Convert canvas to PNG Blob -> Uint8Array
