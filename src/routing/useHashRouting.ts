@@ -5,24 +5,6 @@ import { useToastStore } from '../store/useToastStore';
 import { parseHash, serializeRoute, sectionOf, type Route } from './hashRoute';
 
 /**
- * Saves a pending debounced autosave while the previous card is still active,
- * so edits made just before a route-driven card switch are not lost (D-13).
- */
-async function flushPendingAutosave(): Promise<void> {
-  const state = useCardStore.getState();
-  if (!state.saveTimeoutId) return;
-  clearTimeout(state.saveTimeoutId);
-  useCardStore.setState({ saveTimeoutId: null });
-  try {
-    await state.saveActiveCardMetadata();
-    useCardStore.setState({ saveState: 'idle' });
-  } catch (err) {
-    console.error('Failed to flush autosave before switching cards:', err);
-    useCardStore.setState({ saveState: 'error' });
-  }
-}
-
-/**
  * Keeps the URL hash and the store's (activeTab, activeCardUuid) in sync:
  * - Back/Forward and typed hashes drive the store.
  * - Store changes write the hash (push when the screen or card changes,
@@ -70,7 +52,6 @@ export function useHashRouting(): void {
             goLibrary('That card no longer exists');
             return;
           }
-          await flushPendingAutosave();
           await s.selectCardForEditing(route.cardUuid);
           if (mine !== seq) return;
         }
