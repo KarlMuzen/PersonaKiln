@@ -170,6 +170,17 @@ export function normalizeLorebook(raw: unknown): Lorebook | undefined {
         }
       }
 
+      // A finite numeric position is kept in extensions.position (0 included:
+      // an explicit check, not a truthiness test, which would drop 0). The
+      // entry's own extensions.position, when already set, wins, as it does
+      // in SillyTavern. The V2 string is not derived from the number.
+      if (
+        typeof e.position === 'number' && Number.isFinite(e.position) &&
+        (entryExtensions.position === undefined || entryExtensions.position === null)
+      ) {
+        entryExtensions.position = e.position;
+      }
+
       const entry: LorebookEntry = {
         keys,
         content,
