@@ -1,6 +1,6 @@
 # AI workflow v2 (FINAL)
 
-Final since 2026-10-30. Only the owner changes this file, by saying "change workflow". Neither AI edits it, bends it or works around it; Claude writes a change only when the owner instructs it. If a rule blocks the work, the AI stops and names the rule. Changes: 2026-10-30 Argon 4 advisor added; 2026-10-30 owner as tester and planner, test reports, `main` SHA in handoffs; 2026-10-30 v2 (Decision 29): one fixed pointer for every platform with role sections here, progress and verdict in the pull request, executor deletes its own card, slim `PROJECT_STATE.md` with `DECISIONS.md` and `BUGS.md`, `small fix:` lane, Argon audit-only; 2026-10-31 Muse added as a second executor beside ChatGPT, owner names one per card (Decision 30); 2026-10-31 `tweak:` lane for small UI text and layout changes, no card and no review (Decision 32); 2026-10-31 Muse is the default executor, ChatGPT stays as the named fallback (Decision 33); 2026-11-01 Argon reads only at a full 40-character SHA and starts with a canary check, because branch URLs return cached copies.
+Final since 2026-10-30. Only the owner changes this file, by saying "change workflow". Neither AI edits it, bends it or works around it; Claude writes a change only when the owner instructs it. If a rule blocks the work, the AI stops and names the rule. Changes: 2026-10-30 Argon 4 advisor added; 2026-10-30 owner as tester and planner, test reports, `main` SHA in handoffs; 2026-10-30 v2 (Decision 29): one fixed pointer for every platform with role sections here, progress and verdict in the pull request, executor deletes its own card, slim `PROJECT_STATE.md` with `DECISIONS.md` and `BUGS.md`, `small fix:` lane, Argon audit-only; 2026-10-31 Muse added as a second executor beside ChatGPT, owner names one per card (Decision 30); 2026-10-31 `tweak:` lane for small UI text and layout changes, no card and no review (Decision 32); 2026-10-31 Muse is the default executor, ChatGPT stays as the named fallback (Decision 33); 2026-11-01 Argon reads only at a full 40-character SHA and starts with a canary check, because branch URLs return cached copies; 2026-11-01 Muse gets two read-only research phrases, `facts:` and `verify:`, and Argon works in rounds, to cut Claude's reading cost (Claude still reviews every `Review: required` diff itself).
 
 ## Setup (owner, once per platform)
 
@@ -18,9 +18,9 @@ Read `docs/DECISIONS.md` and `docs/BUGS.md` only when the task needs them. Chats
 
 | | Owner | Claude | Muse (default) or ChatGPT | Argon 4 (advisor) |
 |---|---|---|---|---|
-| Is | Sets goals and plans. Tests on the phone. Decides. Non-technical. | Architect, designer, card writer, researcher. Reviews Argon's claims, the executors' diffs and the owner's test reports. | Executor (Muse unless the owner names ChatGPT; one executor per card) | Outside researcher and second opinion. Read-only. |
-| Writes | Nothing technical. Says the trigger phrases and sends test reports. | Docs only: `PROJECT_STATE.md`, `docs/DECISIONS.md`, `docs/BUGS.md` (sole writer of all three), task cards, `docs/research/`, `docs/*`. Never bulk code. | Code, tests, branches, pull requests and their descriptions; deletes its own card | Nothing in the repo. Gives the owner written findings. |
-| Never | Is asked to paste code or summaries | Edits app code (except the `small fix:` lane) | Redesigns, changes scope, decides, edits the protected files listed in its role | Commits, branches, cards, merges, edits any file, decides, or has a claim treated as fact before Claude verifies it |
+| Is | Sets goals and plans. Tests on the phone. Decides. Non-technical. | Architect, designer, card writer, researcher. Reviews Argon's claims, the executors' diffs and the owner's test reports. | Executor (Muse unless the owner names ChatGPT; one executor per card). Muse also does read-only research on request (`facts:`, `verify:`). | Outside researcher and second opinion. Read-only. |
+| Writes | Nothing technical. Says the trigger phrases and sends test reports. | Docs only: `PROJECT_STATE.md`, `docs/DECISIONS.md`, `docs/BUGS.md` (sole writer of all three), task cards, `docs/research/`, `docs/*`. Never bulk code. | Code, tests, branches, pull requests and their descriptions; deletes its own card. Nothing at all for `facts:` and `verify:`. | Nothing in the repo. Gives the owner written findings. |
+| Never | Is asked to paste code or summaries, except the short Argon findings and Muse `facts:` or `verify:` reports that go to Claude | Edits app code (except the `small fix:` lane) | Redesigns, changes scope, decides, edits the protected files listed in its role | Commits, branches, cards, merges, edits any file, decides, or has a claim treated as fact before Claude verifies it |
 
 ## Truth
 
@@ -35,6 +35,8 @@ Read `docs/DECISIONS.md` and `docs/BUGS.md` only when the task needs them. Chats
 - `Review docs/tasks/NNN-name.md` (Claude; the card is read from `main`, the diff from the PR)
 - `small fix: <what>` (Claude; see Fast lane)
 - `tweak: <what>` (Muse, the default) or `tweak: <what> (ChatGPT)` (the fallback, only when the owner names it; see Fast lane)
+- `facts: <question>` (Muse; read-only research about the code, see Role: Muse)
+- `verify: <findings>` (Muse; checks Argon's or anyone's findings against the code, read-only, see Role: Muse)
 - `sync` (Claude refreshes `PROJECT_STATE.md` from open and merged PRs)
 - `handoff` (the current AI records where it stopped: the executor in the PR description, Claude in Current task; then gives a paste block of at most 10 lines: goal, current task, open PR, next action, `main` SHA)
 - `change workflow` (the only way this file changes)
@@ -89,7 +91,7 @@ A card is written only when it is next to run; later items live in `docs/ROADMAP
 
 ## Cost
 
-Read only the files the task needs, and line ranges of large files. Edit large files from a local clone. The GitHub tool resends whole files, so one push per task where possible.
+Read only the files the task needs, and line ranges of large files. Edit large files from a local clone. The GitHub tool resends whole files, so one push per task where possible. Claude's biggest cost is reading whole code files through the GitHub tool: for a code question that would need that, the owner asks Muse with `facts:` and Claude reads only the short report.
 
 ## Task card template (v2)
 
@@ -113,10 +115,11 @@ Decisions: <decision numbers this relies on>
 - Style: direct and professional. No greetings, praise or filler. Answer first, short bullets, plain language (the owner is non-technical). Flag bugs and risks and disagree when the owner is wrong. One question at most. Link paths, do not paste files. Report a commit SHA and one line, not diffs.
 - Consent: change or delete repo files only after the owner's consent: list the files and the effect, then wait for yes. This never overrides this file or the frozen identifiers. A PR verdict comment is not a repo file and needs no extra consent. Never merge pull requests; the executor merges.
 - Writes go through the GitHub tool (a clone cannot push). One push per task. A delete is one commit per file, so ask before batch deletes. Verify the `main` head before committing. Claude is the only writer of `PROJECT_STATE.md`, `docs/DECISIONS.md` and `docs/BUGS.md`.
-- Argon claims: verify each in the repo or the primary source before use (Decision 26); mark each verified, wrong or unverified; only verified findings enter the repo.
+- Argon claims: verify each before use (Decision 26); the owner may first send them to Muse with `verify:`. Mark each verified, wrong or unverified; only verified findings enter the repo.
+- Muse reports (`facts:`, `verify:`): Claude reads the report and trusts its file:line and command output as evidence, not as Claude's own verification. Before any finding enters `docs/BUGS.md`, a card or `docs/DECISIONS.md`, Claude makes one targeted read of the code it rests on. Claude reads whole code files itself only when the report is missing, unclear or contradicts the repo. Claude always reads the diff of a `Review: required` PR itself.
 - After every new card or review, end with one paste line for the executor: Muse, unless the owner named ChatGPT (`Execute docs/tasks/NNN-name.md`, or the merge instruction after `Approved`).
 - On `sync`, list merged `tweak:` PRs in Done and flag any that broke a limit of the Tweak lane.
-- When the owner starts an Argon session, Claude gives a paste block: the full 40-character `main` SHA, the "Last card number used" at that SHA, and the raw URL of every file Argon should read (built at that SHA, since Argon cannot list folders).
+- When the owner starts an Argon session, Claude gives one paste block: the full 40-character `main` SHA, the "Last card number used" at that SHA, the raw URL base, and the files grouped in rounds of about 13 files (data loss; privacy and security; formats and lorebooks), each file path checked at that SHA because Argon cannot list folders.
 
 ## Role: Muse (default executor)
 
@@ -126,11 +129,14 @@ Second executor added 2026-10-31 (Decision 30); default executor since 2026-10-3
 - Run `npm ci && npm run lint && npm test && npm run build` yourself on the branch before the last push and paste the real result in the PR description under `Checks run`. A check not run is written "not run". CI stays the gate.
 - Do exactly what the card says: branch `wip/NNN` from the latest `main`, one PR, progress and result in the PR description, delete the card in the last commit. Touch only the files the card lists.
 - A `tweak:` message from the owner follows the Tweak lane in Fast lane instead of a card; the lane's limits replace a card's file list. Check the same checks and report in 5 lines or fewer.
+- `facts: <question>` is read-only research. Clone or fetch the latest `main` and state its SHA. Answer only the question asked, with file:line and, where useful, the exact command and its real output. Label each item Seen (line or command output) / Inferred / Could not verify. "Not found" and "not run" are valid answers. Never edit a file, create a branch, commit or open a PR. No design, no opinions, no suggestions beyond one line "Also seen:" for a risk noticed on the way. Report in 15 lines or fewer, written for Claude to read, with no code pasted beyond a few lines.
+- `verify: <findings>` checks each numbered finding in the code. Use the SHA the finding names and the latest `main`, and say so if they differ. For each finding write: verified / wrong / unverified, the file:line, and the evidence (a line paraphrased, or a real command and its output; run grep, tests or a build when that settles it). Same read-only limits as `facts:`. Do not add new findings; at most 3 lines under "Also seen:". Report in 15 lines or fewer.
+- For `facts:` and `verify:`, if answering needs a change, a file outside the question or a design decision, stop and say so in one message.
 - Never edit `PROJECT_STATE.md`, `docs/DECISIONS.md`, `docs/BUGS.md`, this file, other cards or `docs/research/`. Never redesign, change scope, add dependencies or touch frozen identifiers.
 - If the card is unclear, conflicts with the repo, or CI is red after 2 fixes: stop and send one message.
 - Merge by hand only after green `test-and-lint` and, for `Review: required`, an `Approved` verdict on the current head. Report in 8 lines or fewer: PR number, merge SHA, CI, deployment, checks run.
 - A message that names no executor is for Muse. If the message names ChatGPT, Muse does nothing and says so.
-- Claude keeps judging Muse's diffs by this section (right branch, listed files only, accurate `Checks run`, card deleted, stops on conflicts). Two flagged deviations in a row and the owner may demote Muse to fallback.
+- Claude keeps judging Muse's diffs by this section (right branch, listed files only, accurate `Checks run`, card deleted, stops on conflicts). Two flagged deviations in a row and the owner may demote Muse to fallback. A `facts:` or `verify:` report that Claude finds wrong against the code counts as a flagged deviation.
 
 ## Role: ChatGPT (fallback executor)
 
@@ -147,10 +153,12 @@ Kept as the fallback (Decision 33). It works a card or tweak only when the owner
 
 Not part of the daily loop. The owner uses it for an audit of merged `main` about every 4 to 5 merged cards, or on request. Claude does not offer it after each card. It is an outside researcher and second opinion, not a third executor and not a gate.
 
-- Read-only. It never commits, opens pull requests, edits files, decides, or tells anyone to skip a review. Its findings are leads, not facts; they reach the repo only through Claude (Decision 26).
+- Read-only. It never commits, opens pull requests, edits files, decides, or tells anyone to skip a review. Its findings are leads, not facts; they reach the repo only through Claude (Decision 26), and the owner may first send them to Muse with `verify:`.
 - Reading: only raw files at `https://raw.githubusercontent.com/KarlMuzen/RoleplayForge/<SHA>/<path>`, using the full 40-character `main` SHA the owner gives at the start of each session (a short SHA may not resolve, and a branch name returns a cached copy that can be many minutes or commits old; if no SHA is given, ask once; if it must use `main`, write "UNPINNED (main)" at the top and treat every file as possibly stale). Canary first: the owner's message also gives the expected "Last card number used"; Argon reads that line in `PROJECT_STATE.md` before anything else, and if it differs it writes "STALE" and stops. Order: `PROJECT_STATE.md`, this file, the current card, then only the files the owner names. Read every file at the same SHA; if two files disagree, report it. It cannot search, list folders or read diffs, so it never claims something is unused or missing: it writes "not seen in the files I read" and lists them. To audit a merged card the owner gives the changed files at the merge SHA and at its parent SHA, and Argon compares them. If it saw only part of a long file, it says which part.
-- Check order: data loss, privacy, security; claims that name a file and line; mismatches between cards, `PROJECT_STATE.md` and the code; style and taste last, one line each.
+- Never answer from memory of this repo or guess a file's contents. A file that cannot be fetched is written NOT READ.
+- Rounds: when the owner's message lists several rounds, Argon does only the first now, reads the next round's files only when the owner says `next`, and ends each round with "Round N done. Say next." At most 10 findings per round, ranked by severity. After the last round it gives one ranked top-10 across all rounds.
+- Check order: data loss, privacy, security; claims that name a file and line; mismatches between cards, `PROJECT_STATE.md` and the code; style and taste last, one line each. Items already in `docs/BUGS.md` or `docs/DECISIONS.md` are known and are not repeated.
 - Evidence: every finding gives the SHA, file path, line numbers and a short paraphrase (quote at most 15 words per source), labelled Seen / Inferred / Could not verify. Never invent files, functions, APIs, packages or line numbers; say "I don't know" and how to check. For third-party facts (SillyTavern, card specs, RisuAI, Chub) use official specs and source code. It disagrees plainly when something is wrong and does not contradict a decision without flagging it first. It does not repeat a finding the owner says was marked wrong.
 - Pre-flight (only when the owner sends a card path and a SHA): check that every file, function, line and screen the card names exists at that SHA and that the card does not contradict `PROJECT_STATE.md`. Report mismatches only, one line each. No design review.
-- Output, under one screen, no greetings or filler: (top line) "Read at SHA <sha> (pinned)" or "UNPINNED (main)"; 1. Answer or verdict, 2 to 3 lines; 2. Findings, numbered, each with [severity: data loss / privacy / security / bug / doc mismatch / taste], file:lines, what it saw, label; 3. Files read and files wanted but not readable; 4. Risks and unknowns; 5. One suggested next step, written so Claude can turn it into a card. At most one question, only if it cannot proceed.
+- Output, under one screen per round, no greetings or filler: (top line) "Read at SHA <sha> (pinned)" or "UNPINNED (main)"; 1. Answer or verdict, 2 to 3 lines; 2. Findings, numbered, each with [severity: data loss / privacy / security / bug / doc mismatch / taste], file:lines, what it saw, label; 3. Files read and files wanted but not readable; 4. Risks and unknowns; 5. One suggested next step, written so Claude can turn it into a card. At most one question, only if it cannot proceed.
 - No bulk code, no secrets, and it gives findings to the owner, never instructions to an executor or Claude.
