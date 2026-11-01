@@ -648,21 +648,93 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
     }
   },
 
+  // Runs a database write that may replace the card open in the editor
+  // (an overwrite import, a merge restore), then reconciles the store with
+  // whatever the write left behind, so the next edit or autosave cannot
+  // write the old in-memory copy back over it. The reconcile never throws
+  // and never replaces the write's own result or error.
+  runDbCardWrite: async (write) => {
+    const fingerprintOf = (record: StoredCard): string =>
+      JSON.stringify({
+        cardData: record.cardData,
+        modification_date: record.modification_date,
+        embeddedAssets: Object.entries(record.embeddedAssets || {})
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([key, bytes]) => [key, bytes.byteLength]),
+      });
+
+    await flushAutosave();
+    const uuid = get().activeCardUuid;
+    if (!uuid) return write();
+    const before = await db.cards.where('uuid').equals(uuid).first();
+    if (!before) return write();
+    const fingerprint = fingerprintOf(before);
+
+    let outcome: { ok: true; value: Awaited<ReturnType<typeof write>> } | { ok: false; error: unknown };
+    try {
+      outcome = { ok: true, value: await write() };
+    } catch (err) {
+      outcome = { ok: false, error: err };
+    }
+
+    try {
+      if (get().activeCardUuid === uuid) {
+        const record = await db.cards.where('uuid').equals(uuid).first();
+        if (record && fingerprintOf(record) !== fingerprint) {
+          lastUndoPushTime = 0;
+          const old = get().activeCard;
+          let undoStack = get().undoStack;
+          if (old && JSON.stringify(old) !== JSON.stringify(record.cardData)) {
+            undoStack = [
+              ...undoStack,
+              { cardData: JSON.parse(JSON.stringify(old)) },
+            ].slice(-MAX_UNDO_STACK_SIZE);
+          }
+          try {
+            await db.settings.put({
+              key: `editor_history_${uuid}`,
+              value: { undoStack, redoStack: [] },
+            });
+          } catch (err) {
+            console.error('Failed to persist editor history after reconciling the open card:', err);
+          }
+          set({
+            activeCard: record.cardData,
+            activeCardRecord: record,
+            activeCardEmbeddedAssets: record.embeddedAssets || {},
+            isAssetsDirty: false,
+            undoStack,
+            redoStack: [],
+            saveState: 'idle',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to reconcile the open card after a database write:', err);
+    }
+
+    if (!outcome.ok) throw outcome.error;
+    return outcome.value;
+  },
+
   importCardRecord: async (card, embeddedAssets = {}, overwriteUuid) => {
     const currentCards = get().cards;
 
     if (overwriteUuid) {
       const existing = await db.cards.where('uuid').equals(overwriteUuid).first();
       if (existing && existing.id) {
+        const id = existing.id;
         try {
-          await db.cards.update(existing.id, {
-            name: card.data.name || 'Imported Card',
-            tags: card.data.tags || [],
-            creator: card.data.creator || '',
-            modification_date: Math.floor(Date.now() / 1000),
-            cardData: card,
-            embeddedAssets,
-          });
+          await get().runDbCardWrite(() =>
+            db.cards.update(id, {
+              name: card.data.name || 'Imported Card',
+              tags: card.data.tags || [],
+              creator: card.data.creator || '',
+              modification_date: Math.floor(Date.now() / 1000),
+              cardData: card,
+              embeddedAssets,
+            }),
+          );
         } catch (err) {
           throw new Error(describeStorageError(err), { cause: err });
         }

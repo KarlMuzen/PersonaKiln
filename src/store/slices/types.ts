@@ -86,6 +86,7 @@ export interface CardSlice {
     embeddedAssets?: Record<string, Uint8Array>,
     overwriteUuid?: string
   ) => Promise<string>;
+  runDbCardWrite: <T>(write: () => Promise<T>) => Promise<T>;
   setCardCoverImage: (imageBytes: Uint8Array, mimeType?: string) => Promise<void>;
   removeCardCoverImage: () => Promise<void>;
 }
