@@ -126,14 +126,18 @@ export function validateCardCompleteness(card: CharacterCardV3 | null): string[]
   const d = card.data;
   if (!d.name?.trim()) warnings.push('Character Name is missing.');
   if (!d.description?.trim()) warnings.push('Description is missing.');
-
-  // Chub cards fold personality traits into Description by convention,
-  // so the personality-missing warning is suppressed when extensions.chub is present.
-  const isChub = Boolean(d.extensions?.chub);
-  if (!isChub && !d.personality?.trim()) {
-    warnings.push('Personality is missing.');
-  }
-
   if (!d.first_mes?.trim()) warnings.push('First Greeting Message is missing.');
   return warnings;
+}
+
+export function getCardInfoNotes(card: CharacterCardV3 | null): string[] {
+  if (!card) return [];
+  const d = card.data;
+  // Chub cards fold personality traits into Description by convention,
+  // so the personality-empty note is suppressed when extensions.chub is present.
+  const isChub = Boolean(d.extensions?.chub);
+  if (!isChub && !d.personality?.trim()) {
+    return ['Personality is empty. It is optional; many cards put it in Description.'];
+  }
+  return [];
 }

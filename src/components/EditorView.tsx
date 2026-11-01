@@ -1,5 +1,5 @@
 import React from 'react';
-import { validateCardCompleteness } from '../utils/validation';
+import { validateCardCompleteness, getCardInfoNotes } from '../utils/validation';
 import { useCardStore } from '../store/useCardStore';
 import { useDialogStore } from '../store/useDialogStore';
 import { useToastStore } from '../store/useToastStore';
@@ -173,6 +173,7 @@ export const EditorView: React.FC = () => {
   };
 
   const completenessWarnings = validateCardCompleteness(activeCard);
+  const infoNotes = getCardInfoNotes(activeCard);
   const warnings: string[] = [...completenessWarnings];
 
   if (totalTokens > 4096)
@@ -615,6 +616,11 @@ export const EditorView: React.FC = () => {
             <span className="text-[10px] text-emerald-400 font-mono">100% OK</span>
           </div>
         )}
+        {infoNotes.map((note, idx) => (
+          <p key={idx} className="text-xs text-knight-400">
+            {note}
+          </p>
+        ))}
         </div>
       </details>
 
@@ -680,7 +686,7 @@ export const EditorView: React.FC = () => {
               defaultValue=""
               className="px-3 py-2 bg-void-800 border border-knight-700 text-mist-100 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-maroon-400"
             >
-              <option value="" disabled>
+              <option value="" disabled hidden>
                 Export Card As...
               </option>
               <option value="png">SillyTavern PNG (Embedded V3)</option>

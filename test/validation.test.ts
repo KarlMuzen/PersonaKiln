@@ -89,7 +89,7 @@ describe('validateCardCompleteness', () => {
         personality: '',
       },
     };
-    expect(validateCardCompleteness(card)).toEqual(['Personality is missing.']);
+    expect(validateCardCompleteness(card)).toEqual([]);
   });
 
   it('suppresses personality-missing warning when extensions.chub is present', () => {
@@ -130,5 +130,59 @@ describe('validateCardCompleteness', () => {
       'Description is missing.',
       'First Greeting Message is missing.',
     ]);
+  });
+});
+
+describe('getCardInfoNotes', () => {
+  const NOTE = 'Personality is empty. It is optional; many cards put it in Description.';
+
+  async function loadNotes() {
+    const parts = ['../src/utils/', 'validation'];
+    const mod = await import(parts.join(''));
+    return mod.getCardInfoNotes as (card: unknown) => string[];
+  }
+
+  function cardWith(personality: string, chub: boolean) {
+    return {
+      spec: 'chara_card_v3',
+      spec_version: '3.0',
+      data: {
+        name: 'Alice',
+        description: 'A helpful assistant.',
+        personality,
+        first_mes: 'Hello!',
+        mes_example: '',
+        scenario: '',
+        creator_notes: '',
+        system_prompt: '',
+        post_history_instructions: '',
+        alternate_greetings: [],
+        tags: [],
+        creator: '',
+        character_version: '',
+        extensions: chub ? { chub: { fullPath: 'testuser/alice' } } : {},
+        group_only_greetings: [],
+      },
+    };
+  }
+
+  it('returns the note for a non-Chub card with empty personality', async () => {
+    expect((await loadNotes())(cardWith('', false))).toEqual([NOTE]);
+  });
+
+  it('returns the note for whitespace-only personality', async () => {
+    expect((await loadNotes())(cardWith('   ', false))).toEqual([NOTE]);
+  });
+
+  it('returns [] for a Chub card', async () => {
+    expect((await loadNotes())(cardWith('', true))).toEqual([]);
+  });
+
+  it('returns [] for a filled personality', async () => {
+    expect((await loadNotes())(cardWith('Kind and thoughtful.', false))).toEqual([]);
+  });
+
+  it('returns [] for null', async () => {
+    expect((await loadNotes())(null)).toEqual([]);
   });
 });

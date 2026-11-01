@@ -117,3 +117,39 @@ describe('EditorView details token total', () => {
     expect(readChip(container, 'Post-history')).toBeGreaterThan(0);
   });
 });
+
+describe('EditorView export menu and personality note', () => {
+  it('the Export Card As... placeholder option is hidden', async () => {
+    setupCard(FULL_FIELDS);
+    render(<EditorView />);
+    const option = await screen.findByText('Export Card As...');
+    expect(option).toHaveAttribute('hidden');
+  });
+
+  it('a card whose only gap is Personality shows the OK pill, no alerts pill, and the note', async () => {
+    setupCard({
+      description: 'A seasoned cartographer who has mapped every coastline of the northern continent.',
+      first_mes: 'Welcome, traveller.',
+      personality: '',
+    });
+    render(<EditorView />);
+    await screen.findByText('OK');
+    expect(screen.queryByText(/\d+ alerts/)).toBeNull();
+    expect(
+      screen.getByText('Personality is empty. It is optional; many cards put it in Description.'),
+    ).toBeInTheDocument();
+  });
+
+  it('a card with a real gap still shows 1 alerts and still shows the note', async () => {
+    setupCard({
+      description: '',
+      first_mes: 'Welcome, traveller.',
+      personality: '',
+    });
+    render(<EditorView />);
+    await screen.findByText('1 alerts');
+    expect(
+      screen.getByText('Personality is empty. It is optional; many cards put it in Description.'),
+    ).toBeInTheDocument();
+  });
+});
