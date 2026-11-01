@@ -4,7 +4,7 @@ This roadmap is dependency-ordered. Items remain planned until code, tests and c
 
 ## v1.0.0 cutline (owner said yes 2026-11-01)
 
-Eight cards, then a tag. The tag comes after the owner's phone pass on 042-049, one smoke run (`scripts/smoke.py`) and a final `sync`. This cutline comes before the priority plan below; everything not named here is Post-v1.0 (list at the end of this section). A card is written only when it is next to run, one at a time. The findings behind 043-049 come from an earlier Claude chat (read at `main` `e6fefc2`); Claude re-checks each one in the code when it writes that card, so treat them as unverified until the card says otherwise. Card 042 was re-read in the code on 2026-11-01 (`docs/BUGS.md`).
+Ten cards, then a tag. The tag comes after the owner's phone pass on 042-051, one smoke run (`scripts/smoke.py`) and a final `sync`. This cutline comes before the priority plan below; everything not named here is Post-v1.0 (list at the end of this section). A card is written only when it is next to run, one at a time. The findings behind 043-049 come from an earlier Claude chat (read at `main` `e6fefc2`); Claude re-checks each one in the code when it writes that card, so treat them as unverified until the card says otherwise. Card 042 was re-read in the code on 2026-11-01 (`docs/BUGS.md`). Cards 050 and 051 were added by the owner on 2026-11-01; 051 is the last card of v1.0.0.
 
 1. **042 Restore safety** (`Review: required`, `src/io`; card written, `docs/tasks/042-restore-safety.md`):
    - Cards and lorebooks keep the newer side by date. The lorebook restore has the same rollback as cards.
@@ -32,8 +32,18 @@ Eight cards, then a tag. The tag comes after the owner's phone pass on 042-049, 
    - Add `hidden` to the "Export Card As..." option, make "+ Saved Lorebook" open on tap, make "Personality is missing" info-only (Decision 8).
 8. **049 Honest copy** (`skip`):
    - The Export Verify modal says "zero data loss" and "safely import across SillyTavern" and nothing is tested on a real SillyTavern file: reword. No "verified" wording anywhere until fixtures exist.
-   - Replace the CardCrucible leftovers (backup file name, error text, OpenRouter placeholder, `X-Title`) but leave the frozen passkey strings alone.
    - Add a "Sent to <profile>" line on the Enhancer (Decision 7).
+   - The CardCrucible leftovers that this card used to list (backup file name, error text, OpenRouter placeholder, `X-Title`) moved to card 051.
+9. **050 Update check and clear app cache** (`skip`; owner added 2026-11-01; Claude's call on the open choice, accepted by the owner):
+   - Files, as Claude expects them (re-check when writing): `src/components/settings/PwaSection.tsx`, `src/hooks/usePWAUpdate.ts`, the Settings view that passes props to `PwaSection`, and one test. UI and service-worker calls only: no `src/store`, `src/db` or `src/io`. If the executor finds it must touch one of those, it stops and the card becomes `required`.
+   - A "Check for updates" button in the Settings PWA section runs the service-worker update check on demand and shows "Up to date", or the same Reload prompt that exists today. The hourly check in `usePWAUpdate` stays. Read 2026-11-01: that hook registers with `useRegisterSW` and keeps no handle for a manual check, so the card has Claude read how `useRegisterSW` and the registration are exposed before it names the change.
+   - A "Clear app cache" button asks for confirmation, unregisters the service worker, deletes the Cache Storage entries and reloads. It never touches IndexedDB, saved settings or cards. It says the next launch needs a connection.
+   - Not built, on purpose: a "wipe everything" button (backup and restore exist and one tap must not be able to delete every card) and cookie clearing (a code search for `cookie` in `src/` on 2026-11-01 found no use). Both can be re-opened by the owner.
+   - Runs before 051: both touch `usePWAUpdate.ts`.
+10. **051 Rebrand** (`skip`; owner added 2026-11-01, "rebranding everywhere", the last card of v1.0.0):
+   - Every user-visible "CardCrucible" becomes "Roleplay Forge": the update toast in `usePWAUpdate.ts`, `ErrorBoundary` console and crash-report text, the backup file names (`cardcrucible_full_backup_*`; old backups under that name must still restore), the OpenRouter header placeholder in `ConnectionProfilesSection`, the `X-Title` header in `src/services/llmAdapter.ts`, and whatever else a fresh search of `src/`, `public/`, `index.html`, `package.json`, `metadata.json` and `README.md` finds. Claude lists the exact files from that search when it writes the card.
+   - Left alone unless the owner says otherwise, because the Guardrails and Decisions require it: the frozen identifiers (`CardCrucibleDB`, settings keys, `enc.v1.`, `passkey_*`, the passkey user id `cardcrucible_user`, `embeded://`), the MIT license and CardCrucible attribution, the host and project name `roleplayforge` (Decision 20) and the repository name. Open for the owner: the passkey prompt shows the display name "CardCrucible User"; whether renaming only that text affects existing passkeys is unverified.
+   - Needs a Claude re-check that no test or smoke check depends on the old wording (`scripts/smoke.py` finds fields by visible text).
 
 **Wire or delete (owner decisions, 2026-11-01):**
 - Delete `topP` and `frequencyPenalty`: providers disagree and Anthropic has no frequency penalty; they need the sampler table first (Post-v1.0).
@@ -49,7 +59,7 @@ Eight cards, then a tag. The tag comes after the owner's phone pass on 042-049, 
 - Linter 022, budget 024 and syntax ribbon 025.
 - Per-field AI assist, "Sent to" on every screen, cost estimates.
 - Test Lab upgrade, presets and the sampler table, Phases 2-5.
-- PNG duplicate-chunk decision, numeric SillyTavern `position`, build stamp, Vercel ignore command, smoke test in CI.
+- PNG duplicate-chunk decision, numeric SillyTavern `position`, build stamp (commit SHA; the refresh button is card 050), Vercel ignore command, smoke test in CI.
 - Bugs parked in `docs/BUGS.md`: request cancel and timeouts, the latent fallback-profile notice, the Assistant seeing only part of the card, the four "smaller code issues", lorebook list paging, test gaps for `llmAdapter` and the converter, Node 20 end of life (cheap, its own `Review: required` card, not blocking), themed icon, passkey branding, restore "overwrite" mode (the UI never calls it).
 
 ## Priority plan (set 2026-10-29)
@@ -128,14 +138,14 @@ Source: `docs/research/001-st-spec-verification.md` and its cross-check section.
 3. **023 Conversion receipts (Priority 3):** preserved, transformed, unsupported, dropped, with field path and reason, after every import and export. `@@depth N` to `extensions.depth` and position 4 is our own lossy conversion (ST does not do it); log it, keep the original lines. CHARX to PNG lists every dropped asset by type. Read both `embeded://` and `embedded://`, write `embeded://`.
 4. **024 Lorebook budget and size:** wording "low order drops first when the budget is hit, and it stops at the first overflow" (research 001, claim 2); duplicate-entry check; a warning when the sum of enabled entries exceeds `token_budget` (Chub Helper: 6 entries = 1922 tokens vs budget 1200, Details row still shows OK; the simulator showed 3 of 6 firing at 1007 tokens); entry list in pages of 25 only after measuring a 600-entry fixture. The sort direction itself is done (card 041, PR #40).
 5. **025 Syntax ribbon:** a 44px bar above the keyboard with `{{char}}`, `{{user}}`, `<START>` and quotes, built together with keyboard-open mode (Priority 1). Needs a check of `visualViewport` behavior on Android Chrome first.
-6. **Details accuracy (found 2026-10-30, local 393px run on the Chub Helper card):** (a) the token headline (1408) is 210 higher than the chips (1198): `EditorView.tsx` counts post-history and creator notes in the total but shows no chip for them; Decision 9 says the breakdown must sum to the headline. Covered by v1.0.0 card 048: creator notes leave the total and post-history gets a chip. An earlier Claude chat confirmed at `main` `0eeed96` (not re-read) that the headline (around line 164) includes `creator_notes` and `post_history_instructions`, joined with no separators; (b) a freshly imported, untouched card shows "Unsaved" and flips to "Saved" after one edit; probably closed by card 037 (PR #36, ContextBar), owner phone check pending; (c) the "Creator / Author" label has no `htmlFor` and wraps no input, so it is not linked to its field; check the other Card Info fields and the Identity fields for the same (Post-v1.0).
+6. **Details accuracy (found 2026-10-30, local 393px run on the Chub Helper card):** (a) the token headline (1408) is 210 higher than the chips (1198): `EditorView.tsx` counts post-history and creator notes in the total but shows no chip for them; Decision 9 says the breakdown must sum to the headline. Covered by v1.0.0 card 048: creator notes leave the total and post-history gets a chip. An earlier Claude chat confirmed at `main` `0eeed96` (not re-read) that the headline (around line 164) includes `creator_notes` and `post_history_instructions`, joined with no separators; (b) a freshly imported, untouched card shows "Unsaved" and flips to "Saved" after one edit; probably closed by card 037 (PR #36, ContextBar), owner phone check passed 2026-11-01; (c) the "Creator / Author" label has no `htmlFor` and wraps no input, so it is not linked to its field; check the other Card Info fields and the Identity fields for the same (Post-v1.0).
 7. **Open decision (owner needed):** PNG duplicate-chunk choice, see `PROJECT_STATE.md` risks. Needs real exported fixtures first (research 001, open item 1).
 
 Parked: `@@` decorator down-conversion for V2 export (ST strips leading `@@` lines itself; other frontends unchecked); SHA-256 receipt signing (no user need).
 
 ### Small ideas, not carded (added 2026-11-01 from an Argon audit checked by an earlier Claude chat)
 
-- **Build stamp:** Settings already shows the version and build time. Missing: the commit SHA and a refresh (update) button, so the owner can tell which build a phone is running. Absence read in code by the earlier chat at `main` `0eeed96`, not re-read.
+- **Build stamp:** Settings already shows the version and build time. Missing: the commit SHA and a refresh (update) button, so the owner can tell which build a phone is running. The refresh button is now v1.0.0 card 050; the commit SHA stays Post-v1.0. Absence read in code by the earlier chat at `main` `0eeed96`, not re-read.
 - **Vercel ignore command:** per Vercel's docs (read by the earlier chat), `VERCEL_GIT_PREVIOUS_SHA` is the SHA of the last successful deployment and is only set when an Ignored Build Step exists, which this repo has. Argon's claimed cause, a docs commit cancelling a code build, is unverified; `docs/BUGS.md` holds the canceled record seen for `bad5b0e`. A change here is deploy config, so a `Review: required` card, and only after the owner picks it.
 
 ### Working rules
@@ -157,7 +167,7 @@ Marketplace, accounts, cloud sync, plugin system, CRDT sync, path-based routing,
 - [x] Add `npm run build` to CI and verify a passing production PWA build.
 - [x] Implement the first Roleplay Forge visual/identity pass and update package/PWA metadata.
 - [ ] Complete the wider screen-by-screen redesign and manually verify it on an installed Android PWA.
-- [ ] Audit remaining legacy-facing wording and inherited project metadata while retaining MIT attribution.
+- [ ] Audit remaining legacy-facing wording and inherited project metadata while retaining MIT attribution (visible wording is v1.0.0 card 051).
 
 ## Phase 1 — Trustworthy foundation
 
