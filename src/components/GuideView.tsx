@@ -442,7 +442,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               Export Round-Trip Verification
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              After exporting a card as PNG or CHARX, click the animated <strong>Verify Export</strong> button in the Editor header. Roleplay Forge immediately re-imports the exported binary file and performs a deep field-by-field diff (checking text fields, tags, lorebooks, extensions, and asset payloads) against your live card to verify 100% round-trip fidelity.
+              After exporting a card as PNG or CHARX, click the animated <strong>Verify Export</strong> button in the Editor header. Roleplay Forge immediately re-imports the exported binary file and performs a deep field-by-field diff (checking text fields, tags, lorebooks, extensions, and asset payloads) against your live card to check the export matches.
             </p>
           </div>
 

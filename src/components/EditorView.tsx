@@ -611,7 +611,7 @@ export const EditorView: React.FC = () => {
           <div className="bg-emerald-950/30 border border-emerald-800/60 p-3 rounded-2xl text-xs text-emerald-300 flex items-center justify-between">
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Card Health Check Passed — Spec compliant and ready for chat testing.
+              Card Health Check Passed — Required fields are filled and ready for chat testing.
             </div>
             <span className="text-[10px] text-emerald-400 font-mono">100% OK</span>
           </div>
