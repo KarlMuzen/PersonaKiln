@@ -70,29 +70,50 @@ function decodeChunkToJSON(rawText: string): Record<string, unknown> | null {
 }
 
 /**
- * Given several candidate tEXt values that decode to card JSONs, pick the most complete one.
+ * Rank of a card-chunk keyword, lower-cased: ccv3 first, then chara, then
+ * every other accepted name. SillyTavern and RisuAI read ccv3 first.
+ */
+function rankOfKeyword(keyword: string): number {
+  const lower = keyword.toLowerCase();
+  if (lower === 'ccv3') return 1;
+  if (lower === 'chara') return 2;
+  return 3;
+}
+
+/**
+ * Given several candidate tEXt values that decode to card JSONs, pick one.
+ * The best rank that has at least one chunk decoding to a JSON object wins;
+ * only that rank's chunks compete. Inside the rank the old rule applies: if
+ * some chunks have a character_book and some do not, only those with one
+ * compete; the longest JSON.stringify wins; on equal length the later chunk
+ * in the file wins. A chunk that does not decode never competes, and a
+ * better rank whose chunks all failed to decode is skipped.
  */
 function pickBestDuplicateCandidate(
   candidates: { text: string; keyword: string }[]
 ): { json: Record<string, unknown>; keyword: string; warning?: string } | null {
   if (candidates.length === 0) return null;
 
-  const decodedPool = candidates
-    .map((c) => {
-      const json = decodeChunkToJSON(c.text);
-      return { text: c.text, keyword: c.keyword, json };
-    })
-    .filter((d): d is { text: string; keyword: string; json: Record<string, unknown> } => d.json !== null);
+  const decoded = candidates.map((c) => {
+    const json = decodeChunkToJSON(c.text);
+    return { text: c.text, keyword: c.keyword, json };
+  });
+  const decodedPool = decoded.filter(
+    (d): d is { text: string; keyword: string; json: Record<string, unknown> } =>
+      d.json !== null,
+  );
 
   if (decodedPool.length === 0) return null;
 
-  // Prefer CCv3 over CCv2 over other keys
-  const withBook = decodedPool.filter((d) => {
+  const bestRank = Math.min(...decodedPool.map((d) => rankOfKeyword(d.keyword)));
+  const rankPool = decodedPool.filter((d) => rankOfKeyword(d.keyword) === bestRank);
+
+  const withBook = rankPool.filter((d) => {
     const data = d.json?.data as Record<string, unknown> | undefined;
     return Boolean(data?.character_book || d.json?.character_book);
   });
-  const pickedWithBook = withBook.length > 0 && withBook.length < decodedPool.length;
-  const pool = withBook.length > 0 ? withBook : decodedPool;
+  const bookNarrowed = withBook.length > 0 && withBook.length < rankPool.length;
+  const pool = withBook.length > 0 ? withBook : rankPool;
 
   const best = pool.reduce((a, b) => {
     const aLen = JSON.stringify(a.json).length;
@@ -102,10 +123,23 @@ function pickBestDuplicateCandidate(
 
   let warning: string | undefined = undefined;
   if (candidates.length > 1) {
-    if (pickedWithBook) {
-      warning = `Found ${candidates.length} duplicate '${best.keyword}' tEXt chunks; selected candidate that includes character_book.`;
-    } else {
-      warning = `Found ${candidates.length} duplicate '${best.keyword}' tEXt chunks; selected the later occurrence.`;
+    const list = candidates.map((c) => `'${c.keyword}'`).join(', ');
+    warning = `Found ${candidates.length} card chunks (${list}); used '${best.keyword}'.`;
+    if (candidates.some((c) => rankOfKeyword(c.keyword) !== bestRank)) {
+      warning += ' Order used: ccv3, then chara, then other names.';
+    }
+    const unreadable = candidates
+      .filter((_, i) => decoded[i].json === null)
+      .map((c) => `'${c.keyword}'`);
+    if (unreadable.length > 0) {
+      warning += ` Could not read: ${unreadable.join(', ')}.`;
+    }
+    if (rankPool.length > 1) {
+      warning += ` Several chunks of the same rank were read; picked ${
+        bookNarrowed
+          ? 'the one with a character_book'
+          : 'the longest (the later one if equal)'
+      }.`;
     }
   }
 
