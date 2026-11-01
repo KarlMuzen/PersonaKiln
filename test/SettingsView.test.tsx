@@ -80,8 +80,8 @@ describe('SettingsView and Sub-sections', () => {
     expect(screen.getByText(/Max Output Tokens/i)).toBeDefined();
 
     // Switch to advanced tab
-    const advTab = screen.getByRole('button', { name: /3\. System Injections & Proxy/i });
+    const advTab = screen.getByRole('button', { name: /3\. Pricing/i });
     fireEvent.click(advTab);
-    expect(screen.getByText(/System Instructions Override \/ Prefix/i)).toBeDefined();
+    expect(screen.getByText(/Override Pricing/i)).toBeDefined();
   });
 });

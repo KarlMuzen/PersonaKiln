@@ -118,11 +118,6 @@ export interface ConnectionProfile {
   isDefault?: boolean;
   temperature?: number;
   maxTokens?: number;
-  topP?: number;
-  frequencyPenalty?: number;
-  systemOverride?: string;
-  customHeaders?: string;
-  contextLimit?: number;
   customPromptPricePer1K?: number;
   customCompletionPricePer1K?: number;
 }
@@ -133,6 +128,16 @@ export interface AppSetting {
 }
 
 export const CURRENT_SCHEMA_VERSION = 5;
+
+export const REMOVED_PROFILE_FIELDS = ['topP', 'frequencyPenalty', 'systemOverride', 'customHeaders', 'contextLimit'] as const;
+
+export function stripRemovedProfileFields<T extends object>(prof: T): T {
+  const copy = { ...prof };
+  for (const k of REMOVED_PROFILE_FIELDS) {
+    delete (copy as Record<string, unknown>)[k];
+  }
+  return copy;
+}
 
 export class CardCrucibleDatabase extends Dexie {
   cards!: Table<StoredCard, number>;
@@ -219,6 +224,19 @@ export class CardCrucibleDatabase extends Dexie {
       });
       await tx.table('lorebooks').toCollection().modify((lb) => {
         lb.schemaVersion = CURRENT_SCHEMA_VERSION;
+      });
+    });
+
+    this.version(6).stores({
+      cards: '++id, uuid, name, order, *tags, creator, creation_date, modification_date, variantOf',
+      lorebooks: '++id, uuid, name, updatedAt',
+      connectionProfiles: '++id, uuid, name, provider, isDefault',
+      settings: 'key',
+    }).upgrade(async (tx) => {
+      await tx.table('connectionProfiles').toCollection().modify((p) => {
+        for (const k of REMOVED_PROFILE_FIELDS) {
+          delete p[k];
+        }
       });
     });
 

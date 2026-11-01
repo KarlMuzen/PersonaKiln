@@ -18,7 +18,6 @@ import {
   Zap,
   Activity,
   Globe,
-  Terminal,
   Eye,
   EyeOff,
   Coins,
@@ -49,11 +48,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
     baseUrl: '',
     temperature: 0.7,
     maxTokens: 2048,
-    topP: 0.95,
-    frequencyPenalty: 0.0,
-    systemOverride: '',
-    customHeaders: '',
-    contextLimit: 16384,
     customPromptPricePer1K: undefined,
     customCompletionPricePer1K: undefined,
   });
@@ -78,8 +72,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
           baseUrl: '',
           temperature: 0.7,
           maxTokens: 2048,
-          topP: 0.95,
-          contextLimit: 32768,
           customPromptPricePer1K: undefined,
           customCompletionPricePer1K: undefined,
         });
@@ -93,8 +85,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
           baseUrl: 'https://api.openai.com/v1',
           temperature: 0.7,
           maxTokens: 2048,
-          topP: 0.95,
-          contextLimit: 128000,
           customPromptPricePer1K: undefined,
           customCompletionPricePer1K: undefined,
         });
@@ -108,8 +98,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
           baseUrl: 'https://openrouter.ai/api/v1',
           temperature: 0.7,
           maxTokens: 2048,
-          topP: 0.95,
-          contextLimit: 32768,
           customPromptPricePer1K: undefined,
           customCompletionPricePer1K: undefined,
         });
@@ -123,8 +111,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
           baseUrl: 'http://localhost:11434/v1',
           temperature: 0.7,
           maxTokens: 2048,
-          topP: 0.9,
-          contextLimit: 8192,
           customPromptPricePer1K: undefined,
           customCompletionPricePer1K: undefined,
         });
@@ -199,11 +185,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
       baseUrl: cleanBaseUrl,
       temperature: editingProfile.temperature ?? 0.7,
       maxTokens: editingProfile.maxTokens ?? 2048,
-      topP: editingProfile.topP ?? 0.95,
-      frequencyPenalty: editingProfile.frequencyPenalty ?? 0.0,
-      systemOverride: editingProfile.systemOverride || '',
-      customHeaders: editingProfile.customHeaders || '',
-      contextLimit: editingProfile.contextLimit ?? 16384,
       customPromptPricePer1K: editingProfile.customPromptPricePer1K,
       customCompletionPricePer1K: editingProfile.customCompletionPricePer1K,
       isDefault: editingProfile.isDefault ?? (profiles.length === 0 || editingProfile.uuid === activeProfileUuid),
@@ -227,11 +208,6 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
       baseUrl: '',
       temperature: 0.7,
       maxTokens: 2048,
-      topP: 0.95,
-      frequencyPenalty: 0.0,
-      systemOverride: '',
-      customHeaders: '',
-      contextLimit: 16384,
       customPromptPricePer1K: undefined,
       customCompletionPricePer1K: undefined,
     });
@@ -406,7 +382,7 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
               [
                 { id: 'basic', label: 'Basic', num: 1 },
                 { id: 'parameters', label: 'Params', num: 2 },
-                { id: 'advanced', label: 'Advanced', num: 3 },
+                { id: 'advanced', label: 'Pricing', num: 3 },
               ] as const
             ).map((step, idx) => {
               const isActive = activeTab === step.id;
@@ -480,7 +456,7 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
                   : 'border-transparent text-knight-400 hover:text-mist-100'
               }`}
             >
-              <Terminal className="w-3.5 h-3.5" /> 3. System Injections & Proxy
+              <Coins className="w-3.5 h-3.5" /> 3. Pricing
             </button>
           </div>
         </div>
@@ -632,90 +608,12 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] font-medium text-knight-300">
-                  <span>Top-P Nucleus Sampling</span>
-                  <span className="font-mono text-maroon-400">{editingProfile.topP ?? 0.95}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.0"
-                  max="1.0"
-                  step="0.05"
-                  value={editingProfile.topP ?? 0.95}
-                  onChange={(e) => setEditingProfile({ ...editingProfile, topP: parseFloat(e.target.value) })}
-                  className="w-full accent-maroon-400 bg-void-800 rounded-lg cursor-pointer"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] font-medium text-knight-300">
-                  <span>Frequency / Repetition Penalty</span>
-                  <span className="font-mono text-maroon-400">{editingProfile.frequencyPenalty ?? 0.0}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.0"
-                  max="2.0"
-                  step="0.1"
-                  value={editingProfile.frequencyPenalty ?? 0.0}
-                  onChange={(e) =>
-                    setEditingProfile({ ...editingProfile, frequencyPenalty: parseFloat(e.target.value) })
-                  }
-                  className="w-full accent-maroon-400 bg-void-800 rounded-lg cursor-pointer"
-                />
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Tab 3: System Injections & Proxy Options */}
+        {/* Tab 3: Pricing */}
         {activeTab === 'advanced' && (
           <div className="space-y-4 pt-1">
-            <div>
-              <label className="block text-[11px] font-medium text-knight-300 mb-1">
-                System Instructions Override / Prefix
-              </label>
-              <textarea
-                value={editingProfile.systemOverride || ''}
-                onChange={(e) => setEditingProfile({ ...editingProfile, systemOverride: e.target.value })}
-                rows={3}
-                placeholder="e.g. Always adhere strictly to Character Card V3 spec formatting..."
-                className="w-full px-3 py-2 bg-void-800 border border-knight-700 rounded-xl text-mist-100 text-xs focus:outline-none focus:ring-2 focus:ring-maroon-400/60 ring-offset-2 ring-offset-void-950/50"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-knight-300 mb-1">
-                  Context Window Limit (Tokens)
-                </label>
-                <input
-                  type="number"
-                  value={editingProfile.contextLimit ?? 16384}
-                  onChange={(e) =>
-                    setEditingProfile({ ...editingProfile, contextLimit: parseInt(e.target.value) || 16384 })
-                  }
-                  placeholder="e.g. 16384"
-                  className="w-full px-3 py-2 bg-void-800 border border-knight-700 rounded-xl text-mist-100 text-xs font-mono focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-knight-300 mb-1">
-                  Custom HTTP Headers (JSON)
-                </label>
-                <input
-                  type="text"
-                  value={editingProfile.customHeaders || ''}
-                  onChange={(e) => setEditingProfile({ ...editingProfile, customHeaders: e.target.value })}
-                  placeholder='e.g. {"HTTP-Referer": "https://cardcrucible.app"}'
-                  className="w-full px-3 py-2 bg-void-800 border border-knight-700 rounded-xl text-mist-100 text-xs font-mono focus:outline-none"
-                />
-              </div>
-            </div>
-
             {/* Custom Pricing Override Collapsible Toggle */}
             <div className="border border-knight-800/80 rounded-xl p-3.5 bg-void-950/50 space-y-3">
               <button

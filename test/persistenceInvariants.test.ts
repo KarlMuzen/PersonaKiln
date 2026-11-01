@@ -35,7 +35,8 @@ describe('persisted format invariants', () => {
   it('keeps the database name, version, tables, and indexes stable', () => {
     expect(db.name).toBe('CardCrucibleDB');
     expect(CURRENT_SCHEMA_VERSION).toBe(5);
-    expect(db.verno).toBe(5);
+    // Version 6 only scrubs removed profile fields; cards and lorebooks are untouched.
+    expect(db.verno).toBe(6);
     expect(db.tables.map((table) => table.name).sort()).toEqual([
       'cards',
       'connectionProfiles',
