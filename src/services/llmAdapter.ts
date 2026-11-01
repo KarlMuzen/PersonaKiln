@@ -94,6 +94,53 @@ function recordLLMResponseUsage(
 /**
  * Execute request for a single profile.
  */
+
+/** Same API-key scrubbing as the HTTP-status error paths: the key becomes ***HIDDEN_KEY***. */
+function scrubApiKey(text: string, apiKey?: string): string {
+  return apiKey ? text.split(apiKey).join('***HIDDEN_KEY***') : text;
+}
+
+/** Message of an OpenAI-style stream error, or null when the chunk carries none. */
+function openAIStreamErrorMessage(json: unknown): string | null {
+  if (typeof json !== 'object' || json === null) return null;
+  const record = json as Record<string, unknown>;
+  const fieldMessage = openAIErrorFieldMessage(record);
+  if (fieldMessage !== null) return fieldMessage;
+  const choices = record.choices;
+  if (Array.isArray(choices)) {
+    const first = choices[0] as Record<string, unknown> | undefined;
+    if (first?.finish_reason === 'error') return 'no message';
+  }
+  return null;
+}
+
+/** Message of a top-level `error` field, or null when the body carries none. */
+function openAIErrorFieldMessage(record: Record<string, unknown>): string | null {
+  const error = record.error;
+  if (error === undefined || error === null) return null;
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object') {
+    const message = (error as Record<string, unknown>).message;
+    return typeof message === 'string' ? message : 'no message';
+  }
+  return 'no message';
+}
+
+/** Message of an Anthropic stream error, or null when the chunk carries none. */
+function anthropicStreamErrorMessage(json: unknown): string | null {
+  if (typeof json !== 'object' || json === null) return null;
+  const record = json as Record<string, unknown>;
+  if (record.type !== 'error') return null;
+  const error = record.error;
+  if (typeof error === 'object' && error !== null) {
+    const errRecord = error as Record<string, unknown>;
+    const message = typeof errRecord.message === 'string' ? errRecord.message : 'no message';
+    return typeof errRecord.type === 'string' ? `${errRecord.type}: ${message}` : message;
+  }
+  if (typeof error === 'string') return error;
+  return 'no message';
+}
+
 export async function sendSingleLLMRequest(
   profile: ConnectionProfile,
   options: LLMRequestOptions
@@ -279,53 +326,95 @@ export async function sendSingleLLMRequest(
           if (!trimmed || trimmed.startsWith(':')) continue;
           if (trimmed === 'data: [DONE]') continue;
           if (trimmed.startsWith('data: ')) {
+            let json: unknown;
             try {
-              const json = JSON.parse(trimmed.slice(6));
-              const delta = json.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullText += delta;
-                options.onChunk!(delta);
-              }
-              if (json.usage) {
-                if (typeof json.usage.total_tokens === 'number') {
-                  tokensUsed = json.usage.total_tokens;
-                }
-                if (typeof json.usage.prompt_tokens === 'number') {
-                  promptTokens = json.usage.prompt_tokens;
-                }
-              }
+              json = JSON.parse(trimmed.slice(6));
             } catch {
               // ignore partial line JSON
+              continue;
             }
-          }
-        }
-      }
-      
-      if (buffer.trim()) {
-        const trimmed = buffer.trim();
-        if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            const delta = json.choices?.[0]?.delta?.content;
+            // The error check runs after and outside the parse try/catch:
+            // a throw inside it would otherwise be swallowed by the catch.
+            const streamError = openAIStreamErrorMessage(json);
+            if (streamError !== null) {
+              try {
+                await reader.cancel();
+              } catch {
+                // ignore a failure of the cancel itself
+              }
+              throw new Error(scrubApiKey(`LLM stream error: ${streamError}`, apiKey));
+            }
+            const parsed = json as {
+              choices?: { delta?: { content?: string } }[];
+              usage?: { total_tokens?: number; prompt_tokens?: number };
+            };
+            const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               fullText += delta;
               options.onChunk!(delta);
             }
-            if (json.usage) {
-              if (typeof json.usage.total_tokens === 'number') {
-                tokensUsed = json.usage.total_tokens;
+            if (parsed.usage) {
+              if (typeof parsed.usage.total_tokens === 'number') {
+                tokensUsed = parsed.usage.total_tokens;
               }
-              if (typeof json.usage.prompt_tokens === 'number') {
-                promptTokens = json.usage.prompt_tokens;
+              if (typeof parsed.usage.prompt_tokens === 'number') {
+                promptTokens = parsed.usage.prompt_tokens;
               }
             }
-          } catch {}
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+          let json: unknown;
+          try {
+            json = JSON.parse(trimmed.slice(6));
+          } catch {
+            json = undefined;
+          }
+          if (json !== undefined) {
+            const streamError = openAIStreamErrorMessage(json);
+            if (streamError !== null) {
+              try {
+                await reader.cancel();
+              } catch {
+                // ignore a failure of the cancel itself
+              }
+              throw new Error(scrubApiKey(`LLM stream error: ${streamError}`, apiKey));
+            }
+            const parsed = json as {
+              choices?: { delta?: { content?: string } }[];
+              usage?: { total_tokens?: number; prompt_tokens?: number };
+            };
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullText += delta;
+              options.onChunk!(delta);
+            }
+            if (parsed.usage) {
+              if (typeof parsed.usage.total_tokens === 'number') {
+                tokensUsed = parsed.usage.total_tokens;
+              }
+              if (typeof parsed.usage.prompt_tokens === 'number') {
+                promptTokens = parsed.usage.prompt_tokens;
+              }
+            }
+          }
         }
       }
 
       return recordLLMResponseUsage(profile, options, { text: fullText, tokensUsed, promptTokens });
     } else {
       const data = await res.json();
+      const providerError =
+        typeof data === 'object' && data !== null
+          ? openAIErrorFieldMessage(data as Record<string, unknown>)
+          : null;
+      if (providerError !== null) {
+        throw new Error(scrubApiKey(`LLM provider returned an error: ${providerError}`, apiKey));
+      }
       const text = data.choices?.[0]?.message?.content || '';
       const tokensUsed = data.usage?.total_tokens;
       const promptTokens = data.usage?.prompt_tokens;
@@ -409,51 +498,94 @@ export async function sendSingleLLMRequest(
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed.startsWith('data: ')) {
+            let json: unknown;
             try {
-              const json = JSON.parse(trimmed.slice(6));
-              if (json.type === 'message_start' && json.message?.usage) {
-                promptTokens = json.message.usage.input_tokens;
-              } else if (json.type === 'content_block_delta') {
-                const delta = json.delta?.text || json.delta?.partial_json;
-                if (delta) {
-                  fullText += delta;
-                  options.onChunk!(delta);
-                }
-              } else if (json.type === 'message_delta' && json.usage) {
-                const outputTokens = json.usage.output_tokens || 0;
-                tokensUsed = (promptTokens || 0) + outputTokens;
-              }
+              json = JSON.parse(trimmed.slice(6));
             } catch {
               // ignore partial line
+              continue;
             }
-          }
-        }
-      }
-      
-      if (buffer.trim()) {
-        const trimmed = buffer.trim();
-        if (trimmed.startsWith('data: ')) {
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            if (json.type === 'message_start' && json.message?.usage) {
-              promptTokens = json.message.usage.input_tokens;
-            } else if (json.type === 'content_block_delta') {
-              const delta = json.delta?.text || json.delta?.partial_json;
+            // The error check runs after and outside the parse try/catch:
+            // a throw inside it would otherwise be swallowed by the catch.
+            const streamError = anthropicStreamErrorMessage(json);
+            if (streamError !== null) {
+              try {
+                await reader.cancel();
+              } catch {
+                // ignore a failure of the cancel itself
+              }
+              throw new Error(scrubApiKey(`LLM stream error: ${streamError}`, apiKey));
+            }
+            const parsed = json as {
+              type?: string;
+              message?: { usage?: { input_tokens?: number } };
+              delta?: { text?: string; partial_json?: string };
+              usage?: { output_tokens?: number };
+            };
+            if (parsed.type === 'message_start' && parsed.message?.usage) {
+              promptTokens = parsed.message.usage.input_tokens;
+            } else if (parsed.type === 'content_block_delta') {
+              const delta = parsed.delta?.text || parsed.delta?.partial_json;
               if (delta) {
                 fullText += delta;
                 options.onChunk!(delta);
               }
-            } else if (json.type === 'message_delta' && json.usage) {
-              const outputTokens = json.usage.output_tokens || 0;
+            } else if (parsed.type === 'message_delta' && parsed.usage) {
+              const outputTokens = parsed.usage.output_tokens || 0;
               tokensUsed = (promptTokens || 0) + outputTokens;
             }
-          } catch {}
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data: ')) {
+          let json: unknown;
+          try {
+            json = JSON.parse(trimmed.slice(6));
+          } catch {
+            json = undefined;
+          }
+          if (json !== undefined) {
+            const streamError = anthropicStreamErrorMessage(json);
+            if (streamError !== null) {
+              try {
+                await reader.cancel();
+              } catch {
+                // ignore a failure of the cancel itself
+              }
+              throw new Error(scrubApiKey(`LLM stream error: ${streamError}`, apiKey));
+            }
+            const parsed = json as {
+              type?: string;
+              message?: { usage?: { input_tokens?: number } };
+              delta?: { text?: string; partial_json?: string };
+              usage?: { output_tokens?: number };
+            };
+            if (parsed.type === 'message_start' && parsed.message?.usage) {
+              promptTokens = parsed.message.usage.input_tokens;
+            } else if (parsed.type === 'content_block_delta') {
+              const delta = parsed.delta?.text || parsed.delta?.partial_json;
+              if (delta) {
+                fullText += delta;
+                options.onChunk!(delta);
+              }
+            } else if (parsed.type === 'message_delta' && parsed.usage) {
+              const outputTokens = parsed.usage.output_tokens || 0;
+              tokensUsed = (promptTokens || 0) + outputTokens;
+            }
+          }
         }
       }
 
       return recordLLMResponseUsage(profile, options, { text: fullText, tokensUsed, promptTokens });
     } else {
       const data = await res.json();
+      if (data?.type === 'error') {
+        const providerError = anthropicStreamErrorMessage(data) ?? 'no message';
+        throw new Error(scrubApiKey(`LLM provider returned an error: ${providerError}`, apiKey));
+      }
       let text = '';
       const toolUseBlock = (data.content as Array<{ type?: string; input?: unknown }> | undefined)?.find(
         (c) => c.type === 'tool_use'

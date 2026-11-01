@@ -5,6 +5,7 @@ import type { CharacterCardV3 } from '../../schemas/cardSchema';
 import { scanLorebook } from '../../utils/lorebookScan';
 import { resolveMacros } from '../../utils/macroParser';
 import { sendSingleLLMRequest } from '../../services/llmAdapter';
+import { buildExampleDialogueBlock } from '../../services/conversationEngine';
 import {
   gradeProbeReply,
   isAutoGraded,
@@ -229,6 +230,7 @@ export async function executeCrucibleVectorsOnCard(
             d?.personality ? `Personality: ${d.personality}` : '',
             d?.scenario ? `Scenario: ${d.scenario}` : '',
             lorebookText ? `[Lorebook Information]\n${lorebookText}` : '',
+            buildExampleDialogueBlock(d?.mes_example),
             d?.post_history_instructions || '',
           ]
             .filter(Boolean)
