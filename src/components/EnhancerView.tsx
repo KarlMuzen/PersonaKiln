@@ -47,6 +47,7 @@ interface RunItem {
 
 export const EnhancerView: React.FC = () => {
   const { activeCard, activeCardRecord, profiles, activeProfileUuid, setActiveTab, setPreFlightAuditOpen } = useCardStore();
+  const activeProfile = profiles.find((p) => p.uuid === activeProfileUuid);
   const [selectedScenarioRun, setSelectedScenarioRun] = useState<{ scenarioId: string; profileId: string } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [enhancerRationale, setEnhancerRationale] = useState<string>('');
@@ -340,6 +341,12 @@ Propose field updates as structured patches.`;
                               {isGenerating ? 'Synthesizing Patches...' : 'Generate Enhancements'}
                            </button>
                         </div>
+
+                        <p className="text-xs text-knight-400">
+                           {activeProfile
+                              ? `Sent to ${activeProfile.name} (${activeProfile.provider}, ${activeProfile.model}): run scores, transcript, name, description, personality, first message, system prompt, lorebook entries.`
+                              : 'No active connection profile. Select one in Settings; nothing is sent until then.'}
+                        </p>
 
                         {score ? (
                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

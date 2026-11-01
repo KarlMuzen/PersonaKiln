@@ -6,6 +6,7 @@ import { prepareCoverForPng } from '../utils/coverToPng';
 import type { StoredCard } from '../db';
 import JSZip from 'jszip';
 import { findDuplicateCard, type DuplicateMatchKind } from '../utils/contentHash';
+import { uniqueZipFileName } from '../utils/zipFileNames';
 import { useModalA11y } from '../hooks/useModalA11y';
 
 import {
@@ -428,6 +429,8 @@ export const GalleryView: React.FC = () => {
     if (cards.length === 0) return;
     const zip = new JSZip();
     let omittedCoverCount = 0;
+    const usedNames = new Set<string>();
+    let writtenCount = 0;
 
     for (const cardRecord of cards) {
       let basePng: Uint8Array | undefined;
@@ -441,8 +444,9 @@ export const GalleryView: React.FC = () => {
         embeddedAssets: cardRecord.embeddedAssets,
       });
       const ext = format === 'charx' ? 'charx' : format === 'json' ? 'json' : 'png';
-      const filename = `${cardRecord.name.replace(/[^a-z0-9_-]/gi, '_') || 'card'}.${ext}`;
+      const filename = uniqueZipFileName(cardRecord.name, ext, usedNames);
       zip.file(filename, bytes);
+      writtenCount++;
     }
 
     const zipContent = await zip.generateAsync({ type: 'blob' });
@@ -455,7 +459,7 @@ export const GalleryView: React.FC = () => {
 
     useToastStore.getState().showToast({
       title: 'Export Successful',
-      message: `Exported all ${cards.length} card${cards.length > 1 ? 's' : ''} to ZIP archive (${format.toUpperCase()}).`,
+      message: `Exported all ${writtenCount} card${writtenCount > 1 ? 's' : ''} to ZIP archive (${format.toUpperCase()}).`,
       type: 'success',
     });
     if (omittedCoverCount > 0) {
@@ -472,6 +476,8 @@ export const GalleryView: React.FC = () => {
     if (targetUuids.length === 0) return;
     const zip = new JSZip();
     let omittedCoverCount = 0;
+    const usedNames = new Set<string>();
+    let writtenCount = 0;
 
     for (const uuid of targetUuids) {
       const cardRecord = cards.find((c) => c.uuid === uuid);
@@ -487,8 +493,9 @@ export const GalleryView: React.FC = () => {
           embeddedAssets: cardRecord.embeddedAssets,
         });
         const ext = format === 'charx' ? 'charx' : format === 'json' ? 'json' : 'png';
-        const filename = `${cardRecord.name.replace(/[^a-z0-9_-]/gi, '_') || 'card'}.${ext}`;
+        const filename = uniqueZipFileName(cardRecord.name, ext, usedNames);
         zip.file(filename, bytes);
+        writtenCount++;
       }
     }
 
@@ -502,7 +509,7 @@ export const GalleryView: React.FC = () => {
 
     useToastStore.getState().showToast({
       title: 'Export Successful',
-      message: `Exported ${targetUuids.length} selected card${targetUuids.length > 1 ? 's' : ''} to ZIP archive (${format.toUpperCase()}).`,
+      message: `Exported ${writtenCount} selected card${writtenCount > 1 ? 's' : ''} to ZIP archive (${format.toUpperCase()}).`,
       type: 'success',
     });
     if (omittedCoverCount > 0) {
