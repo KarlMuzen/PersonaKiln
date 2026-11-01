@@ -5,7 +5,7 @@ import { useToastStore } from '../store/useToastStore';
 import { countTokens, countTokensAsync } from '../utils/tokenizer';
 import { scanLorebook } from '../utils/lorebookScan';
 import { renderTrustBadgeCanvasBytes } from '../utils/crucibleBadgeExporter';
-import { summarizeProbeScore, type ProbeResult } from '../utils/crucibleGrading';
+import { summarizeProbeScore, scanTranscriptForDisclaimers, type ProbeResult } from '../utils/crucibleGrading';
 
 import {
   FlaskConical,
@@ -264,7 +264,9 @@ export const CrucibleView: React.FC = () => {
   const isModifiedSinceLastRun = lastRunTimestamp !== null && cardModMs > lastRunTimestamp + 2000;
 
   const trustReportData = React.useMemo(() => {
-    let maxTurnsNoDrift = 0;
+    let smallestHit: number | null = null;
+    let largestTurns = 0;
+    let scannedAny = false;
     const testedModels = new Set<string>();
 
     if (activeCardRecord?.scenarios) {
@@ -273,8 +275,13 @@ export const CrucibleView: React.FC = () => {
         for (const [profUuid, res] of Object.entries(s.lastRunResult)) {
           const prof = profiles.find((p) => p.uuid === profUuid);
           if (prof) testedModels.add(prof.model || prof.provider);
-          if (res.scores && res.scores.driftOnsetTurn === null) {
-            maxTurnsNoDrift = Math.max(maxTurnsNoDrift, s.turnCount);
+          if (res.error || !res.transcript) continue;
+          const scan = scanTranscriptForDisclaimers(res.transcript, activeCardUuid || undefined);
+          scannedAny = true;
+          if (scan.hitTurn !== null) {
+            smallestHit = smallestHit === null ? scan.hitTurn : Math.min(smallestHit, scan.hitTurn);
+          } else {
+            largestTurns = Math.max(largestTurns, scan.turns);
           }
         }
       }
@@ -287,7 +294,12 @@ export const CrucibleView: React.FC = () => {
     });
 
     const modelString = testedModels.size > 0 ? Array.from(testedModels).join(' + ') : 'None';
-    const driftString = maxTurnsNoDrift > 0 ? `No drift in ${maxTurnsNoDrift} turns` : 'Not tested / Drift detected';
+    const driftString =
+      smallestHit !== null
+        ? `AI-disclaimer phrase at turn ${smallestHit} (keyword)`
+        : scannedAny && largestTurns > 0
+        ? `No AI-disclaimer phrases in ${largestTurns} turns (keyword)`
+        : 'Not tested';
 
     return {
       passRate,
@@ -301,6 +313,7 @@ export const CrucibleView: React.FC = () => {
     };
   }, [
     activeCardRecord,
+    activeCardUuid,
     profiles,
     multiProfileResults,
     passRate,
@@ -325,7 +338,7 @@ export const CrucibleView: React.FC = () => {
     const reportText = `🔥 **Roleplay Forge Report** 🛡️
 **Character:** ${characterName}
 **Leak checks passed:** ${pPassed}/${pTested} (keyword check)
-**Character Consistency:** ${driftString}
+**AI-disclaimer scan:** ${driftString}
 **Tested On:** ${modelString}
 **Token Efficiency:** ${cardTokens} / ${budget}
 
@@ -658,7 +671,7 @@ export const CrucibleView: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Simulated Scenario & Tester Personas Auto-Runner */}
+      {/* 3. Scripted Scenario Auto-Runner */}
       <ScenarioAutoRunnerPanel
         crucibleRun={crucibleRun}
         cards={cards}

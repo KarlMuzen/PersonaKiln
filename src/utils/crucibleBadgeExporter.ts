@@ -160,7 +160,7 @@ export async function renderTrustBadgeCanvasBytes(
   const detailW = width - detailX - 36;
   const cardH = 68;
 
-  // Card 1: Character Consistency
+  // Card 1: AI-Disclaimer Scan
   let curY = heroY;
   ctx.fillStyle = 'rgba(20, 14, 30, 0.65)';
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -171,11 +171,11 @@ export async function renderTrustBadgeCanvasBytes(
 
   ctx.fillStyle = '#a1a1aa';
   ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('CHARACTER CONSISTENCY', detailX + 16, curY + 24);
+  ctx.fillText('AI-DISCLAIMER SCAN', detailX + 16, curY + 24);
 
   ctx.fillStyle = '#f4f4f5';
   ctx.font = '500 13px system-ui, sans-serif';
-  const consistencyText = report.driftString || 'Not tested / Drift detected';
+  const consistencyText = report.driftString || 'Not tested';
   const cLines = wrapTextLines(ctx, consistencyText, detailW - 32, 1);
   ctx.fillText(cLines[0] || consistencyText, detailX + 16, curY + 48);
 

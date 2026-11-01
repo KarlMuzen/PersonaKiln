@@ -8,6 +8,7 @@ import { sendSingleLLMRequest } from '../../services/llmAdapter';
 import {
   gradeProbeReply,
   isAutoGraded,
+  scanTranscriptForDisclaimers,
   PROBE_PASS_AT_LEAST,
   PROBE_RUNS,
   type ProbeResult,
@@ -106,24 +107,11 @@ export function renderPlainLanguageScoreSummary(
         snippet = targetMsg.text;
       }
     } else if (driftTurn === null) {
-      for (let i = 0; i < evaluatedTranscript.length; i++) {
-        const msg = evaluatedTranscript[i];
-        if (msg.role === 'assistant') {
-          const lower = msg.text.toLowerCase();
-          if (
-            /\b(as an ai|language model|i am an ai|openai|claude|gemini|system prompt|i cannot fulfill|as a large language model)\b/i.test(
-              lower
-            )
-          ) {
-            const assistantIndex = evaluatedTranscript
-              .slice(0, i + 1)
-              .filter((m) => m.role === 'assistant').length;
-            driftTurn = assistantIndex || Math.floor(i / 2) + 1;
-            snippet = msg.text;
-            driftReasoning = 'Assistant broke character and acknowledged AI constraints or system metadata.';
-            break;
-          }
-        }
+      const scan = scanTranscriptForDisclaimers(evaluatedTranscript, targetCardUuid);
+      if (scan.hitTurn !== null) {
+        driftTurn = scan.hitTurn;
+        snippet = scan.snippet;
+        driftReasoning = 'A reply matched a keyword rule: an AI disclaimer, a model name or the system prompt.';
       }
     }
   }
@@ -181,7 +169,7 @@ export function renderPlainLanguageScoreSummary(
         <div className="p-2.5 bg-red-950/40 border border-red-800/60 rounded-lg space-y-1 text-red-200">
           <div className="flex items-center gap-1.5 font-semibold text-red-300">
             <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-            <span>Character Drift Occurred at Turn {driftTurn}</span>
+            <span>AI-disclaimer phrase at turn {driftTurn} (keyword check)</span>
           </div>
           {driftReasoning && <p className="text-[10.5px] text-red-300/90">{driftReasoning}</p>}
           {snippet && (
@@ -196,7 +184,7 @@ export function renderPlainLanguageScoreSummary(
       ) : (
         <div className="p-2 bg-emerald-950/30 border border-emerald-800/50 rounded-lg flex items-center gap-1.5 text-emerald-300 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>No character drift detected across all turns.</span>
+          <span>No AI-disclaimer phrases found (keyword check).</span>
         </div>
       )}
     </div>

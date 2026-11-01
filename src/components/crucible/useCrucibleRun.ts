@@ -157,6 +157,7 @@ export function useCrucibleRun({ compareModels, targetProfiles, activeProfile }:
     await Promise.all(
       targetProfilesToRun.map(async (runProfile) => {
         let history = [...initialHistory];
+        let runError: string | undefined;
 
         const personaGenerator = async (historySoFar: ChatMessage[]): Promise<string> => {
           const userMessageCount = historySoFar.filter((m) => m.role === 'user').length;
@@ -191,6 +192,7 @@ export function useCrucibleRun({ compareModels, targetProfiles, activeProfile }:
             const errMsg = err instanceof Error ? err.message : String(err);
             console.error(`Error in simulated turn for profile ${runProfile.name}:`, err);
             history.push({ role: 'assistant', text: `[Simulation error on turn ${turn}: ${errMsg}]` });
+            runError = `Turn ${turn}: ${errMsg}`;
             break;
           }
         }
@@ -203,6 +205,7 @@ export function useCrucibleRun({ compareModels, targetProfiles, activeProfile }:
             speakerName: m.speakerName,
           })),
           timestamp: Date.now(),
+          ...(runError ? { error: runError } : {}),
         };
       })
     );
