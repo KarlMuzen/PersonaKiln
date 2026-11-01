@@ -9,8 +9,34 @@ const MAX_UNDO_STACK_SIZE = 50;
 let lastUndoPushTime = 0;
 let loadCardsRequestId = 0;
 let loadLorebooksRequestId = 0;
+let autosaveInFlight: Promise<void> | null = null;
 
-export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set, get) => ({
+export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set, get) => {
+  // Flushes a pending or running autosave of the previous card while it is
+  // still active, so a card switch never drops, re-saves or hides it. It
+  // never throws: a failed save is already reported by its own toast, and
+  // the switch still happens.
+  const flushAutosave = async (): Promise<void> => {
+    if (autosaveInFlight) {
+      await autosaveInFlight;
+    }
+    const pendingId = get().saveTimeoutId;
+    if (pendingId) {
+      clearTimeout(pendingId);
+      set({ saveTimeoutId: null });
+      try {
+        await get().saveActiveCardMetadata();
+      } catch (err) {
+        console.error('Failed to flush autosave before switching cards:', err);
+        set({ saveState: 'error' });
+      }
+      if (get().saveState !== 'error') {
+        set({ saveState: 'idle' });
+      }
+    }
+  };
+
+  return {
   cards: [],
   isLoadingCards: false,
   lorebooks: [],
@@ -31,21 +57,32 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
     set({
       saveState: 'saving',
       saveTimeoutId: setTimeout(async () => {
-        try {
-          await get().saveActiveCardMetadata();
-          if (get().saveState !== 'error') {
-            set({ saveState: 'saved' });
-            // Reset to idle after 2 seconds
-            setTimeout(() => set((s) => (s.saveState === 'saved' ? { saveState: 'idle' } : {})), 2000);
+        // The id is cleared first, so a later flush can tell "pending" from
+        // "already saved" instead of re-saving on every switch.
+        set({ saveTimeoutId: null });
+        const promise = (async () => {
+          try {
+            await get().saveActiveCardMetadata();
+            if (get().saveState !== 'error') {
+              set({ saveState: 'saved' });
+              // Reset to idle after 2 seconds
+              setTimeout(() => set((s) => (s.saveState === 'saved' ? { saveState: 'idle' } : {})), 2000);
+            }
+          } catch (err) {
+            console.error('Autosave failed:', err);
+            set({ saveState: 'error' });
+            useToastStore.getState().showToast({
+              title: 'Autosave failed — changes may be lost',
+              message: err instanceof Error ? err.message : 'Database error',
+              type: 'error',
+            });
           }
-        } catch (err) {
-          console.error('Autosave failed:', err);
-          set({ saveState: 'error' });
-          useToastStore.getState().showToast({
-            title: 'Autosave failed — changes may be lost',
-            message: err instanceof Error ? err.message : 'Database error',
-            type: 'error',
-          });
+        })();
+        autosaveInFlight = promise;
+        try {
+          await promise;
+        } finally {
+          if (autosaveInFlight === promise) autosaveInFlight = null;
         }
       }, 800),
     });
@@ -91,6 +128,9 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
   },
 
   selectCardForEditing: async (uuid) => {
+    // Flush while the previous card is still active, even when switching to
+    // the same card again.
+    await flushAutosave();
     const record = await db.cards.where('uuid').equals(uuid).first();
     if (record) {
       lastUndoPushTime = 0;
@@ -697,4 +737,5 @@ export const createCardSlice: StateCreator<CardStore, [], [], CardSlice> = (set,
 
     await saveActiveCard();
   },
-});
+  };
+};
