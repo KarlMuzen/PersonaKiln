@@ -46,6 +46,20 @@ function detectImageExt(bytes: Uint8Array): 'png' | 'jpg' | 'webp' | 'gif' | nul
   return null;
 }
 
+function base64ToBytes(base64Val: string): Uint8Array | null {
+  const cleaned = base64Val.replace(/\s+/g, '');
+  try {
+    const binaryStr = atob(cleaned);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
 function tryExtractAvatarImage(avatarStr: string): { imgBin: Uint8Array; ext: string } | null {
   const trimmed = avatarStr.trim();
   if (!trimmed) return null;
@@ -134,21 +148,25 @@ export async function importCardData(
       }
     }
 
+    let warnings = pngResult.warnings;
     if (pngResult.extraAssets) {
+      const collected: string[] = [...(warnings ?? [])];
       for (const [path, base64Val] of Object.entries(pngResult.extraAssets)) {
-        try {
-          embeddedAssets[path] = new TextEncoder().encode(base64Val);
-        } catch (e) {
-          // ignore
+        const bytes = base64ToBytes(base64Val);
+        if (bytes === null) {
+          collected.push(`Extra PNG asset "${path}" is not valid base64 and was skipped.`);
+          continue;
         }
+        embeddedAssets[`chara-ext-asset_:${path}`] = bytes;
       }
+      warnings = collected.length > 0 ? collected : undefined;
     }
 
     return {
       format: 'png',
       card,
       embeddedAssets: Object.keys(embeddedAssets).length > 0 ? embeddedAssets : undefined,
-      warnings: pngResult.warnings,
+      warnings,
     };
   }
 
@@ -308,9 +326,18 @@ export async function exportCardData(
   if (format === 'png') {
     const cover = pickCoverBytes(validatedCard, options.embeddedAssets);
     const basePng = options.basePng ?? (cover && isPng(cover) ? cover : undefined);
+    const extraAssets: Record<string, Uint8Array> = {};
+    if (options.embeddedAssets) {
+      for (const [key, bytes] of Object.entries(options.embeddedAssets)) {
+        if (key.startsWith('chara-ext-asset_:')) {
+          extraAssets[key.replace('chara-ext-asset_:', '')] = bytes;
+        }
+      }
+    }
     return writeCardToPng(validatedCard, {
       basePng,
       backfillV2: options.backfillV2,
+      ...(Object.keys(extraAssets).length > 0 ? { extraAssets } : {}),
     });
   }
 
