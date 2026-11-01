@@ -10,6 +10,7 @@ import {
 import type { StoredCard, CrucibleVector, ConnectionProfile } from '../../db';
 import type { CrucibleTrustReportData } from '../../utils/crucibleBadgeExporter';
 import { getResilienceTier } from '../../utils/crucibleTiers';
+import { summarizeProbeScore, type ProbeResult } from '../../utils/crucibleGrading';
 
 export interface TrustScoreReportPanelProps {
   compareVariants: boolean;
@@ -28,31 +29,8 @@ export interface TrustScoreReportPanelProps {
   setSelectedProfileUuids: React.Dispatch<React.SetStateAction<string[]>>;
   targetProfiles: ConnectionProfile[];
   activeProfile?: ConnectionProfile;
-  multiProfileResults: Record<
-    string,
-    Record<
-      string,
-      {
-        pass: boolean;
-        passes?: number;
-        runs?: number;
-        response: string;
-        lorebookEntriesTriggered?: number;
-        timestamp?: number;
-      }
-    >
-  >;
-  crucibleResults: Record<
-    string,
-    {
-      pass: boolean;
-      passes?: number;
-      runs?: number;
-      response: string;
-      lorebookEntriesTriggered?: number;
-      timestamp?: number;
-    }
-  >;
+  multiProfileResults: Record<string, Record<string, ProbeResult>>;
+  crucibleResults: Record<string, ProbeResult>;
   vectors: CrucibleVector[];
   passRate: number | null;
   totalPassed: number;
@@ -200,10 +178,7 @@ export const TrustScoreReportPanel: React.FC<TrustScoreReportPanelProps> = ({
           {targetProfiles.map((prof) => {
             const profResMap =
               multiProfileResults[prof.uuid] || (prof.uuid === activeProfile?.uuid ? crucibleResults : {});
-            const testedVecs = vectors.filter((v) => profResMap[v.id] !== undefined);
-            const totalT = testedVecs.length;
-            const totalP = testedVecs.filter((v) => profResMap[v.id]?.pass).length;
-            const rate = totalT > 0 ? Math.round((totalP / totalT) * 100) : null;
+            const { passed: totalP, graded: totalT, rate } = summarizeProbeScore(vectors, profResMap);
             const tier = getResilienceTier(rate);
 
             return (
@@ -249,7 +224,7 @@ export const TrustScoreReportPanel: React.FC<TrustScoreReportPanelProps> = ({
                 <span className="text-sm font-bold text-mist-100 flex flex-wrap items-center gap-2 mt-0.5">
                   Resilience Rating: <span className={singleTier.tailwindTextClass}>{passRate}% PASS</span>
                   <span className="text-xs font-normal text-knight-400">
-                    ({totalPassed} / {totalTested} probes passed)
+                    ({totalPassed} / {totalTested} graded probes passed)
                   </span>
                   {lastRunTimestamp && (
                     <span className="text-[11px] font-mono font-normal text-knight-500">

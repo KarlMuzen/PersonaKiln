@@ -1,34 +1,45 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, Trash2, BookOpen, Plus } from 'lucide-react';
 import type { CrucibleVector, ConnectionProfile } from '../../db';
+import { isAutoGraded, type ProbeResult } from '../../utils/crucibleGrading';
+
+function ProbeResultChip({ result, autoGraded }: { result: ProbeResult; autoGraded: boolean }) {
+  if (result.error) {
+    return (
+      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 shrink-0 bg-amber-950 text-amber-300 border border-amber-800">
+        ERROR
+      </span>
+    );
+  }
+  if (!autoGraded) {
+    return (
+      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 shrink-0 bg-void-800 text-knight-300 border border-knight-700/50">
+        NOT AUTO-GRADED
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 shrink-0 ${
+        result.pass
+          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+          : 'bg-red-950 text-red-300 border border-red-800'
+      }`}
+    >
+      {result.pass ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+      {result.runs
+        ? `${result.passes}/${result.runs} ${result.pass ? 'PASSED' : 'FLAGGED'}`
+        : result.pass
+        ? 'PASSED'
+        : 'FLAGGED'}
+    </span>
+  );
+}
 
 export interface ProbeVectorPanelProps {
   vectors: CrucibleVector[];
-  crucibleResults: Record<
-    string,
-    {
-      pass: boolean;
-      passes?: number;
-      runs?: number;
-      response: string;
-      lorebookEntriesTriggered?: number;
-      timestamp?: number;
-    }
-  >;
-  multiProfileResults: Record<
-    string,
-    Record<
-      string,
-      {
-        pass: boolean;
-        passes?: number;
-        runs?: number;
-        response: string;
-        lorebookEntriesTriggered?: number;
-        timestamp?: number;
-      }
-    >
-  >;
+  crucibleResults: Record<string, ProbeResult>;
+  multiProfileResults: Record<string, Record<string, ProbeResult>>;
   targetProfiles: ConnectionProfile[];
   activeProfile?: ConnectionProfile;
   compareModels: boolean;
@@ -61,7 +72,12 @@ export const ProbeVectorPanel: React.FC<ProbeVectorPanelProps> = ({
       {/* Vectors List */}
       <div className="space-y-3">
         {vectors.map((vector) => {
-          const res = crucibleResults[vector.id];
+          const savedRes = crucibleResults[vector.id];
+          const multiRes = activeProfile
+            ? multiProfileResults[activeProfile.uuid]?.[vector.id]
+            : undefined;
+          // A fresh error from this run replaces the older saved result.
+          const res = multiRes?.error ? multiRes : savedRes;
 
           return (
             <div
@@ -72,25 +88,12 @@ export const ProbeVectorPanel: React.FC<ProbeVectorPanelProps> = ({
                 <span className="text-xs font-semibold text-mist-100">{vector.name}</span>
                 <div className="flex items-center gap-2">
                   {!compareModels && res && res.lorebookEntriesTriggered ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 bg-void-800 text-mist-300 border border-knight-700/50">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 shrink-0 bg-void-800 text-mist-300 border border-knight-700/50">
                       <BookOpen className="w-3 h-3" /> {res.lorebookEntriesTriggered} Lorebook
                     </span>
                   ) : null}
                   {!compareModels && res && (
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 ${
-                        res.pass
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-red-950 text-red-300 border border-red-800'
-                      }`}
-                    >
-                      {res.pass ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                      {res.runs
-                        ? `${res.passes}/${res.runs} ${res.pass ? 'PASSED' : 'FLAGGED'}`
-                        : res.pass
-                        ? 'PASSED'
-                        : 'FLAGGED'}
-                    </span>
+                    <ProbeResultChip result={res} autoGraded={isAutoGraded(vector.id)} />
                   )}
 
                   {vector.id.startsWith('custom_') && (
@@ -135,24 +138,7 @@ export const ProbeVectorPanel: React.FC<ProbeVectorPanelProps> = ({
                               </span>
                             </div>
                             {profRes && (
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 shrink-0 ${
-                                  profRes.pass
-                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                    : 'bg-red-950 text-red-300 border border-red-800'
-                                }`}
-                              >
-                                {profRes.pass ? (
-                                  <CheckCircle2 className="w-3 h-3" />
-                                ) : (
-                                  <XCircle className="w-3 h-3" />
-                                )}
-                                {profRes.runs
-                                  ? `${profRes.passes}/${profRes.runs} ${profRes.pass ? 'PASSED' : 'FLAGGED'}`
-                                  : profRes.pass
-                                  ? 'PASSED'
-                                  : 'FLAGGED'}
-                              </span>
+                              <ProbeResultChip result={profRes} autoGraded={isAutoGraded(vector.id)} />
                             )}
                           </div>
 
