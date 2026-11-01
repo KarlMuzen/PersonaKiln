@@ -4,47 +4,57 @@ This roadmap is dependency-ordered. Items remain planned until code, tests and c
 
 ## v1.0.0 cutline (owner said yes 2026-11-01)
 
-Ten cards, then a tag. The tag comes after the owner's phone pass on 042-051, one smoke run (`scripts/smoke.py`) and a final `sync`. This cutline comes before the priority plan below; everything not named here is Post-v1.0 (list at the end of this section). A card is written only when it is next to run, one at a time. The findings behind 043-049 come from an earlier Claude chat (read at `main` `e6fefc2`); Claude re-checks each one in the code when it writes that card, so treat them as unverified until the card says otherwise. Cards 042, 044 and 045 were re-read in the code on 2026-11-01 (`docs/BUGS.md`). Cards 050 and 051 were added by the owner on 2026-11-01; 051 is the last card of v1.0.0.
+Twelve cards, then a tag. The tag comes after the owner's phone pass on the cutline cards, one smoke run (`scripts/smoke.py`) and a final `sync`. This cutline comes before the priority plan below; everything not named here is Post-v1.0 (list at the end of this section). A card is written only when it is next to run, one at a time. The findings behind 043-049 come from an earlier Claude chat (read at `main` `e6fefc2`); Claude re-checks each one in the code when it writes that card, so treat them as unverified until the card says otherwise. Cards 042, 044 and 045 were re-read in the code on 2026-11-01 (`docs/BUGS.md`). Cards 050 and 051 were added by the owner on 2026-11-01; the rebrand is the last card of v1.0.0.
 
-1. **042 Restore safety** (`Review: required`, `src/io`; merged as PR #41, `5e707f1`):
+On 2026-11-01 the owner moved three Argon-verified fixes into the cutline (checked by Muse and re-read by Claude, `docs/research/003-argon-audit-verification.md`): the stale open card (a new card right after 045), the ZIP export names (folded into the 049 batch) and the PNG extra assets (a new card before the rebrand). Card numbers are assigned when a card is written ("Last card number used" plus 1), so the labels below, from 046 on, are names, not file numbers: the stale-open-card card takes 046 and every later label moves up by one for each new card written before it. The order below is the run order.
+
+- **042 Restore safety** (`Review: required`, `src/io`; merged as PR #41, `5e707f1`):
    - Cards and lorebooks keep the newer side by date. The lorebook restore has the same rollback as cards.
    - A winning backup copy also brings `testSuites`, `scenarios`, `variantOf`, `variantLabel` and `avatarUrl`.
    - A local API key is never erased (a keyless backup merged onto an existing profile writes `apiKey: undefined`; the card starts with a test).
    - Merge mode no longer overwrites local settings (assistant chats, undo history).
    - The result dialog counts what was kept, skipped for no uuid, or failed.
-2. **043 Profile cleanup and key privacy** (`required`; merged as PR #42, `b8c04f2`):
+- **043 Profile cleanup and key privacy** (`required`; merged as PR #42, `b8c04f2`):
    - Remove `topP`, `frequencyPenalty` and `customHeaders` (owner decision), and also `systemOverride` and `contextLimit`, which only the form, the type and the backup code touch (code search at `e6fefc2`; not a full read of `src/`).
    - Scrub values already stored, and build exports from an allowlist: removing the fields from the form alone leaves old headers in the database and in backups.
    - Old backups must still restore.
-3. **044 Autosave flush, D-13** (`required`, `src/store`; merged as PR #43, `f824ea2`): its own card, because it is data loss and should not ride with UI polish. The flush now lives in `selectCardForEditing`, the timer clears its own id, a running save is awaited, and a failed save keeps its `error` state.
-4. **045 Name the field when a save or import fails** (`required`; card written, `docs/tasks/045-storage-errors.md`; scope set on 2026-11-01 after Claude re-read the code):
+- **044 Autosave flush, D-13** (`required`, `src/store`; merged as PR #43, `f824ea2`): its own card, because it is data loss and should not ride with UI polish. The flush now lives in `selectCardForEditing`, the timer clears its own id, a running save is awaited, and a failed save keeps its `error` state.
+- **045 Name the field when a save or import fails** (`required`; card written, `docs/tasks/045-storage-errors.md`; scope set on 2026-11-01 after Claude re-read the code):
    - One helper turns Zod's storage-limit error into "Field: reason (limit N)"; the save toast and `importCardRecord` use it.
    - `saveActiveCard` and `importCardRecord` get the error handling they lack; multi-file and ZIP imports list each failed card as a warning and carry on, instead of aborting or dropping it silently.
    - The caps in `src/schemas/limits.ts` do not change: raising them needs real-card fixtures (Post-v1.0).
    - Not in this card (Claude's call, 2026-11-01): keeping the person on a card after a failed save. It is logged in `docs/BUGS.md` with "Stay or discard" as the design.
-5. **046 Crucible honesty** (`skip`):
+- **Stale open card after an overwrite import or restore** (new, `required`, `src/store`; verified 2026-11-01, `docs/BUGS.md`; runs right after 045 merges, because both change `importCardRecord`):
+   - When an overwrite import or a merge restore replaces the card that is open in the editor, reload that card into memory (and drop its `editor_history_<uuid>`), so the next edit or autosave cannot write the old copy back.
+   - Claude re-reads `importCardRecord`, the merge-restore path in `BackupRestoreSection` and `selectCardForEditing` when it writes the card, and decides the exact call; the test covers an import over the open card.
+- **046 Crucible honesty** (`skip`):
    - One grader for Run All and Variant Compare (today they differ, and Compare ignores custom vectors).
    - Grade only `system_hijack` and `ooc_hijack`; the other vectors show the reply as "not auto-graded" and stay out of the score.
    - Scenario runs never write scores (no code in `src/` does), so the report always says "Not tested / Drift detected", and an errored run shows green "Simulation Complete" and "No character drift detected". Show failed runs as failed.
    - Reword the green banner to "no AI-disclaimer phrases found (keyword check)", change "Survived x/y" to "Leak checks passed x/y (keyword)", drop the stale "Select a persona" copy.
-6. **047 Test fidelity** (`skip`):
+- **047 Test fidelity** (`skip`):
    - Profile temperature and maxTokens become defaults for Chat Preview and scenario runs only; probes keep fixed values so Compare Models stays fair.
    - A stream `error` event throws instead of returning partial text as a result.
    - Send `mes_example` in the test prompt (never sent today). Owner confirmed on 2026-11-01 that Decisions 1-33 do not exclude it (Claude read `docs/DECISIONS.md` 1-33 on 2026-11-01 and found no exclusion).
-7. **048 Editor polish** (`skip`):
+- **048 Editor polish** (`skip`):
    - Details headline: drop `creator_notes` from the total (owner confirmed on 2026-11-01 that in CCv2/CCv3 it is human-facing creator commentary, never prompt text; Claude checks the spec text when it writes the card) and add a chip for `post_history_instructions`. Decision 9 holds: the breakdown sums to the headline.
    - Add `hidden` to the "Export Card As..." option, make "+ Saved Lorebook" open on tap, make "Personality is missing" info-only (Decision 8).
-8. **049 Honest copy** (`skip`):
+- **049 Honest copy** (`skip`; a batch card of three independent changes, each with its own "Done when"):
    - The Export Verify modal says "zero data loss" and "safely import across SillyTavern" and nothing is tested on a real SillyTavern file: reword. No "verified" wording anywhere until fixtures exist.
    - Add a "Sent to <profile>" line on the Enhancer (Decision 7).
-   - The CardCrucible leftovers that this card used to list (backup file name, error text, OpenRouter placeholder, `X-Title`) moved to card 051.
-9. **050 Update check and clear app cache** (`skip`; owner added 2026-11-01; Claude's call on the open choice, accepted by the owner):
+   - Bulk ZIP export no longer overwrites cards that share a file name (added 2026-11-01, verified in `GalleryView.tsx`, `docs/BUGS.md`): add a counter suffix to a repeated name, and make the success toast count the files actually written.
+   - The CardCrucible leftovers that this card used to list (backup file name, error text, OpenRouter placeholder, `X-Title`) moved to the rebrand card.
+- **050 Update check and clear app cache** (`skip`; owner added 2026-11-01; Claude's call on the open choice, accepted by the owner):
    - Files, as Claude expects them (re-check when writing): `src/components/settings/PwaSection.tsx`, `src/hooks/usePWAUpdate.ts`, the Settings view that passes props to `PwaSection`, and one test. UI and service-worker calls only: no `src/store`, `src/db` or `src/io`. If the executor finds it must touch one of those, it stops and the card becomes `required`.
    - A "Check for updates" button in the Settings PWA section runs the service-worker update check on demand and shows "Up to date", or the same Reload prompt that exists today. The hourly check in `usePWAUpdate` stays. Read 2026-11-01: that hook registers with `useRegisterSW` and keeps no handle for a manual check, so the card has Claude read how `useRegisterSW` and the registration are exposed before it names the change.
    - A "Clear app cache" button asks for confirmation, unregisters the service worker, deletes the Cache Storage entries and reloads. It never touches IndexedDB, saved settings or cards. It says the next launch needs a connection.
    - Not built, on purpose: a "wipe everything" button (backup and restore exist and one tap must not be able to delete every card) and cookie clearing (a code search for `cookie` in `src/` on 2026-11-01 found no use). Both can be re-opened by the owner.
-   - Runs before 051: both touch `usePWAUpdate.ts`.
-10. **051 Full rebrand** (`required`; owner added 2026-11-01, "rebranding everywhere", the last card of v1.0.0; Decision 35, "Everywhere means everywhere", widened it to the old-brand identifiers):
+   - Runs before the rebrand: both touch `usePWAUpdate.ts`.
+- **PNG extra assets** (new, `required`, `src/io`; verified 2026-11-01, `docs/BUGS.md`; runs after 050 and before the rebrand):
+   - On import, decode the `chara-ext-asset_:` base64 into bytes instead of encoding the text (`importCardData` in `src/io/index.ts`).
+   - On PNG export, write the extra assets (`writeCardToPng` in `src/io/png.ts` has no parameter for them at `e3ec01a`; the card names the shape).
+   - Claude first looks for a real PNG that carries these chunks; if none can be had, the card says so and tests with a built fixture. Not in this card: the storage-schema field loss, which waits for a real fixture (Post-v1.0).
+- **051 Full rebrand** (`required`; owner added 2026-11-01, "rebranding everywhere", the last card of v1.0.0; Decision 35, "Everywhere means everywhere", widened it to the old-brand identifiers):
    - Every user-visible "CardCrucible" becomes "Roleplay Forge": the update toast in `usePWAUpdate.ts`, `ErrorBoundary` console and crash-report text, the backup file names (`cardcrucible_full_backup_*`; old backups under that name must still restore), the OpenRouter header placeholder in `ConnectionProfilesSection`, the `X-Title` header in `src/services/llmAdapter.ts`, and whatever else a fresh search of `src/`, `public/`, `index.html`, `package.json`, `metadata.json` and `README.md` finds. Claude lists the exact files from that search when it writes the card.
    - Also renamed (Decision 35): the IndexedDB name `CardCrucibleDB`, the passkey user id `cardcrucible_user` and the passkey display name "CardCrucible User". Renaming the database opens an empty one and a new passkey user id may no longer match an existing passkey, so the owner exports a backup (Settings, Export Backup) before 051 merges and restores it after. When Claude writes the card it first reads `src/utils/passkeyCrypto.ts`, checks whether `crypto_*` or the passkey flow depend on the old names, and whether a one-time copy from the old database is small enough to include. `Review: required` (`src/db`, passkey, crypto).
    - Left alone: the brand-free frozen identifiers (`enc.v1.`, `app_theme`, `editor_history_<uuid>`, `assistant_chats`, `cost_tracker_usage`, `crypto_*`, `passkey_*`, `embeded://`), the MIT license text and copyright notice with the credit to the original CardCrucible project (the owner may overrule this one line), the host and project name `roleplayforge` (Decision 20) and the repository name.
@@ -66,6 +76,7 @@ Ten cards, then a tag. The tag comes after the owner's phone pass on 042-051, on
 - Test Lab upgrade, presets and the sampler table, Phases 2-5.
 - PNG duplicate-chunk decision, numeric SillyTavern `position`, build stamp (commit SHA; the refresh button is card 050), Vercel ignore command, smoke test in CI.
 - Raising the storage caps (with real-card fixtures) and keeping the person on a card after a failed save ("Stay or discard").
+- Argon-verified bugs parked in `docs/BUGS.md` (2026-11-01): the storage schemas dropping unknown fields (needs a real fixture first), the cancelled unlock that still sends the request, no passkey enrollment after a recovery-key unlock, unwrapped paste wrappers, `createVariant` flush and name cap, and the tab-hide flush leaving `name`, `tags` and `creator` stale.
 - Bugs parked in `docs/BUGS.md`: request cancel and timeouts, the latent fallback-profile notice, the Assistant seeing only part of the card, the four "smaller code issues", lorebook list paging, test gaps for `llmAdapter` and the converter, Node 20 end of life (cheap, its own `Review: required` card, not blocking), themed icon, restore "overwrite" mode (the UI never calls it).
 
 ## Priority plan (set 2026-10-29)
