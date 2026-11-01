@@ -70,10 +70,10 @@ export const ScenarioPicker: React.FC<ScenarioPickerProps> = ({
         <div>
           <h3 className="text-sm font-semibold text-mist-100 flex items-center gap-2">
             <Bot className="w-4 h-4 text-maroon-400" />
-            Automated Scenario & Tester Personas
+            Scripted Scenario
           </h3>
           <p className="text-xs text-knight-400 mt-0.5">
-            Auto-run multi-turn conversations using AI simulated user personas to stress-test character consistency.
+            Runs a scripted multi-turn conversation against the card. The replies are scanned for AI-disclaimer phrases (keyword check); no AI scores them.
           </p>
         </div>
 

@@ -71,7 +71,6 @@ export interface ProbeScoreSummary {
   graded: number;
   rate: number | null;
 }
-
 /**
  * Count only vectors that are auto-graded, have a result and have no
  * error. An old stored result on a vector that is not auto-graded is
@@ -91,4 +90,56 @@ export function summarizeProbeScore(
     if (result.pass) passed++;
   }
   return { passed, graded, rate: graded > 0 ? Math.round((passed / graded) * 100) : null };
+}
+
+/**
+ * The keyword rule for scenario transcripts: an AI disclaimer, a model
+ * name or the system prompt, mentioned by an assistant message. This is
+ * the only scenario scoring in v1.0: no AI judge, keyword checks only,
+ * labelled as such.
+ */
+export const DISCLAIMER_PATTERN =
+  /\b(as an ai|language model|i am an ai|openai|claude|gemini|system prompt|i cannot fulfill|as a large language model)\b/i;
+
+export interface TranscriptMessage {
+  role: string;
+  text: string;
+  speakerUuid?: string;
+  speakerName?: string;
+}
+
+export interface DisclaimerScan {
+  hitTurn: number | null;
+  snippet: string | null;
+  turns: number;
+}
+
+/**
+ * Scan a scenario transcript for disclaimer phrases. When
+ * targetCardUuid is given, assistant messages from other speakers are
+ * dropped first. hitTurn is the 1-based position of the first matching
+ * assistant message among the kept assistant messages; turns is the
+ * number of user messages in the whole transcript.
+ */
+export function scanTranscriptForDisclaimers(
+  transcript: TranscriptMessage[],
+  targetCardUuid?: string,
+): DisclaimerScan {
+  const kept =
+    targetCardUuid !== undefined
+      ? transcript.filter((m) => m.role !== 'assistant' || !m.speakerUuid || m.speakerUuid === targetCardUuid)
+      : transcript;
+  let hitTurn: number | null = null;
+  let snippet: string | null = null;
+  let assistantSeen = 0;
+  for (const msg of kept) {
+    if (msg.role !== 'assistant') continue;
+    assistantSeen++;
+    if (hitTurn === null && DISCLAIMER_PATTERN.test(msg.text)) {
+      hitTurn = assistantSeen;
+      snippet = msg.text;
+    }
+  }
+  const turns = transcript.filter((m) => m.role === 'user').length;
+  return { hitTurn, snippet, turns };
 }

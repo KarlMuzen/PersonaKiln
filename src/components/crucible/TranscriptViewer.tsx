@@ -106,8 +106,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
         </div>
       ) : (
         <div className="p-6 bg-void-950/40 border border-knight-800/60 rounded-xl text-center text-xs text-knight-500">
-          Select a persona and turn count above, then click <strong>Run Scenario</strong> to launch a simulated
-          conversation.
+          Click <strong>Run Scenario</strong> to run a scripted conversation against this card.
         </div>
       )}
 
