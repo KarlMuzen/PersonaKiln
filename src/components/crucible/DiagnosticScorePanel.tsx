@@ -5,6 +5,13 @@ import type { CharacterCardV3 } from '../../schemas/cardSchema';
 import { scanLorebook } from '../../utils/lorebookScan';
 import { resolveMacros } from '../../utils/macroParser';
 import { sendSingleLLMRequest } from '../../services/llmAdapter';
+import {
+  gradeProbeReply,
+  isAutoGraded,
+  PROBE_PASS_AT_LEAST,
+  PROBE_RUNS,
+  type ProbeResult,
+} from '../../utils/crucibleGrading';
 
 export interface DiagnosticScores {
   agendaHeld?: boolean;
@@ -206,17 +213,7 @@ export async function executeCrucibleVectorsOnCard(
   }
 
   const d = cardData?.data;
-  const results: Record<
-    string,
-    {
-      pass: boolean;
-      passes?: number;
-      runs?: number;
-      response: string;
-      lorebookEntriesTriggered?: number;
-      timestamp?: number;
-    }
-  > = {};
+  const results: Record<string, ProbeResult> = {};
   const runTimestamp = Date.now();
   let capturedActualTokens: number | undefined;
 
@@ -251,7 +248,7 @@ export async function executeCrucibleVectorsOnCard(
           { charName: d?.name || 'Character', userName: 'User' }
         );
 
-      const REPEATS = 3;
+      const REPEATS = PROBE_RUNS;
       let passCount = 0;
       const responsesTexts: string[] = [];
 
@@ -273,38 +270,41 @@ export async function executeCrucibleVectorsOnCard(
         }
 
         const respText = response.text;
-        let pass = true;
-        const lowerText = respText.toLowerCase();
-
-        if (
-          lowerText.includes('system prompt') ||
-          lowerText.includes('you are an ai') ||
-          lowerText.includes('as an ai language model') ||
-          lowerText.includes('cannot fulfill this request')
-        ) {
-          pass = false;
+        const grade = gradeProbeReply(vector.id, respText);
+        if (grade) {
+          if (grade.passed) passCount++;
+          responsesTexts.push(
+            `[Run ${i + 1} - ${grade.passed ? 'PASS' : 'FAIL'}]\nResponse: ${respText}\nEval: ${grade.reason}`
+          );
+        } else {
+          responsesTexts.push(`[Run ${i + 1}]\nResponse: ${respText}`);
         }
-
-        if (pass) passCount++;
-        responsesTexts.push(respText);
       }
 
-      const overallPass = passCount >= 2;
-      results[vector.id] = {
-        pass: overallPass,
-        passes: passCount,
-        runs: REPEATS,
-        response: responsesTexts[responsesTexts.length - 1] || '',
-        lorebookEntriesTriggered,
-        timestamp: runTimestamp,
-      };
+      if (isAutoGraded(vector.id)) {
+        results[vector.id] = {
+          pass: passCount >= PROBE_PASS_AT_LEAST,
+          passes: passCount,
+          runs: REPEATS,
+          response: responsesTexts.join('\n\n---\n\n'),
+          lorebookEntriesTriggered,
+          timestamp: runTimestamp,
+        };
+      } else {
+        results[vector.id] = {
+          pass: false,
+          response: responsesTexts.join('\n\n---\n\n'),
+          lorebookEntriesTriggered,
+          timestamp: runTimestamp,
+        };
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       results[vector.id] = {
         pass: false,
-        passes: 0,
-        runs: 3,
-        response: `[Probe Error: ${message}]`,
+        response: `Error: ${message}`,
+        error: message,
+        lorebookEntriesTriggered: 0,
         timestamp: runTimestamp,
       };
     }
