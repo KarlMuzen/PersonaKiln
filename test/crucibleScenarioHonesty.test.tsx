@@ -94,6 +94,16 @@ async function savedScenarios(uuid: string): Promise<CrucibleScenario[] | undefi
   return record?.scenarios as CrucibleScenario[] | undefined;
 }
 
+async function waitForSavedRunResult(uuid: string): Promise<unknown> {
+  let result: unknown;
+  await waitFor(async () => {
+    const scenarios = await savedScenarios(uuid);
+    result = scenarios?.[0]?.lastRunResult?.['profile-1'];
+    expect(result).toBeDefined();
+  });
+  return result;
+}
+
 function seededScenario(
   transcript: { role: string; text: string }[],
   extra: Record<string, unknown> = {},
@@ -172,36 +182,52 @@ describe('scanTranscriptForDisclaimers', () => {
 
 describe('CrucibleView scenario honesty', () => {
   it('(a) a rejected adapter stores an error and shows it, not Simulation Complete', async () => {
-    await setupCrucibleCard([], []);
-    mockSendLLMRequest.mockRejectedValue(new Error('boom'));
-    mockSendSingleLLMRequest.mockResolvedValue({ text: 'ok' });
-    render(React.createElement(CrucibleView));
-    fireEvent.click(screen.getByRole('button', { name: /Run Scenario/ }));
-    await waitFor(() => expect(screen.getByText(/Error: Turn 1:/)).toBeInTheDocument());
-    expect(screen.queryByText(/Simulation Complete/)).toBeNull();
-    const scenarios = await savedScenarios('test-uuid');
-    const result = scenarios?.[0]?.lastRunResult?.['profile-1'] as
-      | { error?: string }
-      | undefined;
-    expect(result?.error?.startsWith('Turn 1: ')).toBe(true);
-    expect(result?.error).toContain('boom');
+    const realUpdate = db.cards.update.bind(db.cards);
+    const updateSpy = vi.spyOn(db.cards, 'update').mockImplementation((async (key, changes) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return realUpdate(key, changes);
+    }) as typeof db.cards.update);
+    try {
+      await setupCrucibleCard([], []);
+      mockSendLLMRequest.mockRejectedValue(new Error('boom'));
+      mockSendSingleLLMRequest.mockResolvedValue({ text: 'ok' });
+      render(React.createElement(CrucibleView));
+      fireEvent.click(screen.getByRole('button', { name: /Run Scenario/ }));
+      await waitFor(() => expect(screen.getByText(/Error: Turn 1:/)).toBeInTheDocument());
+      expect(screen.queryByText(/Simulation Complete/)).toBeNull();
+      const result = (await waitForSavedRunResult('test-uuid')) as
+        | { error?: string }
+        | undefined;
+      expect(result?.error?.startsWith('Turn 1: ')).toBe(true);
+      expect(result?.error).toContain('boom');
+    } finally {
+      updateSpy.mockRestore();
+    }
   });
 
   it('(b) a clean run stores no error and shows the new green banner', async () => {
-    await setupCrucibleCard([], []);
-    mockSendLLMRequest.mockResolvedValue({ text: 'A clean in-character reply.' });
-    mockSendSingleLLMRequest.mockResolvedValue({ text: 'ok' });
-    render(React.createElement(CrucibleView));
-    fireEvent.click(screen.getByRole('button', { name: /Run Scenario/ }));
-    await waitFor(() => expect(screen.getByText(/Simulation Complete/)).toBeInTheDocument());
-    expect(
-      screen.getByText('No AI-disclaimer phrases found (keyword check).'),
-    ).toBeInTheDocument();
-    const scenarios = await savedScenarios('test-uuid');
-    const result = scenarios?.[0]?.lastRunResult?.['profile-1'] as
-      | Record<string, unknown>
-      | undefined;
-    expect(result && 'error' in result).toBe(false);
+    const realUpdate = db.cards.update.bind(db.cards);
+    const updateSpy = vi.spyOn(db.cards, 'update').mockImplementation((async (key, changes) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return realUpdate(key, changes);
+    }) as typeof db.cards.update);
+    try {
+      await setupCrucibleCard([], []);
+      mockSendLLMRequest.mockResolvedValue({ text: 'A clean in-character reply.' });
+      mockSendSingleLLMRequest.mockResolvedValue({ text: 'ok' });
+      render(React.createElement(CrucibleView));
+      fireEvent.click(screen.getByRole('button', { name: /Run Scenario/ }));
+      await waitFor(() => expect(screen.getByText(/Simulation Complete/)).toBeInTheDocument());
+      expect(
+        screen.getByText('No AI-disclaimer phrases found (keyword check).'),
+      ).toBeInTheDocument();
+      const result = (await waitForSavedRunResult('test-uuid')) as
+        | Record<string, unknown>
+        | undefined;
+      expect(result && 'error' in result).toBe(false);
+    } finally {
+      updateSpy.mockRestore();
+    }
   });
 
   it('(c) a seeded leaking scenario shows the red keyword banner at turn 2', async () => {
