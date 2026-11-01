@@ -40,6 +40,26 @@ export interface TurnInputOptions {
 /**
  * Builds system prompt for a scene character given current history and scene context.
  */
+/**
+ * Build the example-dialogue block for a card's mes_example. Splits on
+ * <START> (case-insensitive), trims each piece and drops empty ones.
+ * The literal <START> never appears in the result, and macros are not
+ * resolved here: the whole system prompt goes through resolveMacros
+ * later, so {{char}} and {{user}} resolve there.
+ */
+export function buildExampleDialogueBlock(mesExample?: string): string {
+  if (!mesExample) return '';
+  const pieces = mesExample
+    .split(/<START>/i)
+    .map((piece) => piece.trim())
+    .filter((piece) => piece.length > 0);
+  if (pieces.length === 0) return '';
+  return (
+    'Example dialogue (shows how the character speaks; these events are not part of this chat):\n' +
+    pieces.map((piece) => `[Example]\n${piece}`).join('\n\n')
+  );
+}
+
 export function buildSystemPrompt(
   sc: SceneCharacter,
   chatHistory: ChatMessage[],
@@ -97,6 +117,7 @@ export function buildSystemPrompt(
       cd.personality ? `Personality: ${cd.personality}` : '',
       cd.scenario ? `Scenario: ${cd.scenario}` : '',
       lorebookSystemText ? `[Lorebook Information]\n${lorebookSystemText}` : '',
+      buildExampleDialogueBlock(cd.mes_example),
       relationshipText,
       isGroupMode && otherNames.length > 0
         ? `You are ${cd.name}, one of several characters together in a shared group scene, alongside: ${otherNames.join(
@@ -171,11 +192,30 @@ export async function executeConversationTurn(
     history: initialHistory,
     userTurnInput,
     userName = 'User',
-    temperature = 0.7,
-    maxTokens = 500,
+    temperature: temperatureOpt,
+    maxTokens: maxTokensOpt,
     onSpeakerTyping,
     onStepMessage,
   } = options;
+
+  // The option wins when the caller passed one; otherwise the profile's
+  // value when usable (a finite number, and for max tokens also > 0 and
+  // rounded); otherwise the fallback. Settings shows 2048 for a profile
+  // without a value, so the code agrees with the screen.
+  const temperature =
+    temperatureOpt !== undefined
+      ? temperatureOpt
+      : typeof profile.temperature === 'number' && Number.isFinite(profile.temperature)
+      ? profile.temperature
+      : 0.7;
+  const maxTokens =
+    maxTokensOpt !== undefined
+      ? maxTokensOpt
+      : typeof profile.maxTokens === 'number' &&
+        Number.isFinite(profile.maxTokens) &&
+        profile.maxTokens > 0
+      ? Math.round(profile.maxTokens)
+      : 2048;
 
   let currentHistory = [...initialHistory];
 

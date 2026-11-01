@@ -585,6 +585,7 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
                 />
                 <p className="text-[10px] text-knight-500">
                   Lower values (0.2) produce factual, predictable text; higher values (1.2) increase creativity.
+                  Used by Chat Preview and scenario runs; probes and other tools use their own fixed values.
                 </p>
               </div>
 
@@ -604,7 +605,7 @@ export const ConnectionProfilesSection: React.FC<ConnectionProfilesSectionProps>
                   }
                   className="w-full px-3 py-1.5 bg-void-800 border border-knight-700 rounded-xl text-mist-100 text-xs font-mono focus:outline-none"
                 />
-                <p className="text-[10px] text-knight-500">Maximum response length per message turn.</p>
+                <p className="text-[10px] text-knight-500">Maximum reply length in Chat Preview and scenario runs; probes and other tools use their own limits.</p>
               </div>
             </div>
 
