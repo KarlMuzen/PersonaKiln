@@ -51,6 +51,26 @@ export const LorebookView: React.FC = () => {
   const provider = activeProfile?.provider;
 
   const [mode, setMode] = useState<'single' | 'composer'>('single');
+  const [isSavedMenuOpen, setIsSavedMenuOpen] = useState(false);
+  const savedMenuRef = React.useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isSavedMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!savedMenuRef.current?.contains(event.target as Node)) {
+        setIsSavedMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsSavedMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSavedMenuOpen]);
   const [selectedEntryIndex, setSelectedEntryIndex] = useState<number | null>(0);
   const [previewUserName, setPreviewUserName] = useState('Traveler');
   const [searchFilter, setSearchFilter] = useState('');
@@ -643,22 +663,31 @@ export const LorebookView: React.FC = () => {
                 </label>
 
                 {dbLorebooks.length > 0 && (
-                  <div className="relative group">
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 bg-void-800 hover:bg-knight-700 text-mist-100 border border-knight-700 rounded-xl text-xs font-medium">
+                  <div className="relative group" ref={savedMenuRef}>
+                    <button
+                      onClick={() => setIsSavedMenuOpen((open) => !open)}
+                      aria-expanded={isSavedMenuOpen}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-void-800 hover:bg-knight-700 text-mist-100 border border-knight-700 rounded-xl text-xs font-medium"
+                    >
                       <Database className="w-3.5 h-3.5 text-cyan-400" />
                       + Saved Lorebook
                     </button>
-                    <div className="absolute right-0 top-full mt-1 hidden group-hover:block bg-void-900 border border-knight-700 rounded-xl shadow-xl p-2 z-20 min-w-[200px] space-y-1">
-                      {dbLorebooks.map((lb) => (
-                        <button
-                          key={lb.id}
-                          onClick={() => handleAddDbLayer(lb)}
-                          className="w-full text-left px-2.5 py-1.5 text-xs text-knight-300 hover:text-mist-100 hover:bg-void-800 rounded-lg truncate"
-                        >
-                          {lb.name} ({lb.lorebook.entries.length} entries)
-                        </button>
-                      ))}
-                    </div>
+                    {isSavedMenuOpen && (
+                      <div className="absolute right-0 top-full mt-1 bg-void-900 border border-knight-700 rounded-xl shadow-xl p-2 z-20 min-w-[200px] space-y-1">
+                        {dbLorebooks.map((lb) => (
+                          <button
+                            key={lb.id}
+                            onClick={() => {
+                              handleAddDbLayer(lb);
+                              setIsSavedMenuOpen(false);
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 text-xs text-knight-300 hover:text-mist-100 hover:bg-void-800 rounded-lg truncate"
+                          >
+                            {lb.name} ({lb.lorebook.entries.length} entries)
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
