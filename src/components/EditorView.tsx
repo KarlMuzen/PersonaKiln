@@ -82,7 +82,6 @@ export const EditorView: React.FC = () => {
     systemPrompt?: number;
     postHistory?: number;
     mesExample?: number;
-    creatorNotes?: number;
   }>({});
 
   React.useEffect(() => {
@@ -96,9 +95,8 @@ export const EditorView: React.FC = () => {
       countTokensAsync(d.system_prompt || '', true, activeProfile),
       countTokensAsync(d.post_history_instructions || '', true, activeProfile),
       countTokensAsync(d.mes_example || '', true, activeProfile),
-      countTokensAsync(d.creator_notes || '', true, activeProfile),
     ]).then(
-      ([desc, greeting, personality, scenario, systemPrompt, postHistory, mesExample, creatorNotes]) => {
+      ([desc, greeting, personality, scenario, systemPrompt, postHistory, mesExample]) => {
         if (!isCancelled) {
           setAsyncFieldTokens({
             desc,
@@ -108,7 +106,6 @@ export const EditorView: React.FC = () => {
             systemPrompt,
             postHistory,
             mesExample,
-            creatorNotes,
           });
         }
       }
@@ -124,7 +121,6 @@ export const EditorView: React.FC = () => {
     d?.system_prompt,
     d?.post_history_instructions,
     d?.mes_example,
-    d?.creator_notes,
     activeProfile,
   ]);
 
@@ -139,46 +135,15 @@ export const EditorView: React.FC = () => {
     asyncFieldTokens.postHistory ?? (d ? countTokens(d.post_history_instructions, true, provider) : 0);
   const mesExampleTokens =
     asyncFieldTokens.mesExample ?? (d ? countTokens(d.mes_example, true, provider) : 0);
-  const creatorNotesTokens =
-    asyncFieldTokens.creatorNotes ?? (d ? countTokens(d.creator_notes, true, provider) : 0);
 
-  const fallbackTotalTokens =
+  const totalTokens =
     descTokens +
     greetingTokens +
     personalityTokens +
     scenarioTokens +
     systemPromptTokens +
     postHistoryTokens +
-    mesExampleTokens +
-    creatorNotesTokens;
-  const [exactTotalTokens, setExactTotalTokens] = React.useState<number | null>(null);
-
-  const fullPromptText = d
-    ? (d.description || '') +
-      (d.first_mes || '') +
-      (d.personality || '') +
-      (d.scenario || '') +
-      (d.system_prompt || '') +
-      (d.post_history_instructions || '') +
-      (d.mes_example || '') +
-      (d.creator_notes || '')
-    : '';
-
-  React.useEffect(() => {
-    if (!fullPromptText) return;
-    let isCancelled = false;
-    countTokensAsync(fullPromptText, true, activeProfile).then((cnt) => {
-      if (!isCancelled) {
-        setExactTotalTokens(cnt);
-      }
-    });
-    return () => {
-      isCancelled = true;
-    };
-  }, [fullPromptText, activeProfile]);
-
-  const effectiveExactTokens = fullPromptText ? exactTotalTokens : 0;
-  const totalTokens = effectiveExactTokens !== null ? effectiveExactTokens : fallbackTotalTokens;
+    mesExampleTokens;
   const tokenPercentage = Math.min(100, Math.round((totalTokens / tokenBudgetLimit) * 100));
 
   const [lastExported, setLastExported] = React.useState<{
@@ -614,6 +579,11 @@ export const EditorView: React.FC = () => {
             {systemPromptTokens > 0 && (
               <span className="px-2 py-0.5 bg-void-800 rounded-md border border-knight-700/40">
                 System: {systemPromptTokens}
+              </span>
+            )}
+            {postHistoryTokens > 0 && (
+              <span className="px-2 py-0.5 bg-void-800 rounded-md border border-knight-700/40">
+                Post-history: {postHistoryTokens}
               </span>
             )}
             {mesExampleTokens > 0 && (
