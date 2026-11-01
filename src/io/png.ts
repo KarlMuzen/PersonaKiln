@@ -11,6 +11,19 @@ import { base64ToUtf8, createDummyPng, utf8ToBase64 } from '../utils/encoding';
 
 const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20 MB
 
+/**
+ * Encodes bytes as base64 in slices so a large asset cannot overflow the
+ * call stack through a single String.fromCharCode call. Not utf8ToBase64:
+ * that helper is for text, and these bytes are a file.
+ */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
 export interface ReadPngResult {
   card: CharacterCardV3;
   sourceFormat: 'ccv3' | 'chara_v2';
@@ -207,6 +220,8 @@ export function readCardFromPng(pngBuffer: Uint8Array): ReadPngResult {
 export interface WritePngOptions {
   basePng?: Uint8Array;
   backfillV2?: boolean;
+  /** Bare path -> bytes. When passed (even empty), replaces the base PNG's extra-asset chunks. */
+  extraAssets?: Record<string, Uint8Array>;
 }
 
 /**
@@ -218,12 +233,17 @@ export function writeCardToPng(
 ): Uint8Array {
   const basePng = options.basePng || createDummyPng();
   const chunks = extractChunks(basePng);
+  const extraAssets = options.extraAssets;
 
-  // Filter out any existing 'ccv3' or 'chara' tEXt chunks
+  // Filter out any existing 'ccv3' or 'chara' tEXt chunks, and, when extra
+  // assets are passed, every existing 'chara-ext-asset_:' chunk as well, so
+  // stale entries cannot survive alongside the new ones.
   const cleanChunks = chunks.filter((chunk: { name: string; data: Uint8Array }) => {
     if (chunk.name !== 'tEXt') return true;
     const decoded = pngChunkText.decode(chunk.data);
-    return decoded.keyword !== 'ccv3' && decoded.keyword !== 'chara';
+    if (decoded.keyword === 'ccv3' || decoded.keyword === 'chara') return false;
+    if (extraAssets !== undefined && decoded.keyword.startsWith('chara-ext-asset_:')) return false;
+    return true;
   });
 
   // Create CCv3 tEXt chunk
@@ -252,6 +272,24 @@ export function writeCardToPng(
     const base64V2 = utf8ToBase64(JSON.stringify(v2Card));
     const charaChunk = pngChunkText.encode('chara', base64V2);
     cleanChunks.splice(insertPos + 1, 0, charaChunk);
+  }
+
+  // Optionally write extra-asset chunks right after ccv3 (and chara, with
+  // backfillV2), still ahead of IDAT, one per asset in ascending key order.
+  if (extraAssets !== undefined) {
+    let extraInsertPos = insertPos + 1 + (options.backfillV2 ? 1 : 0);
+    for (const path of Object.keys(extraAssets).sort()) {
+      const base64 = bytesToBase64(extraAssets[path]);
+      if (base64.length > MAX_PAYLOAD_SIZE) {
+        throw new Error(`Extra asset "${path}" is too large to embed in a PNG.`);
+      }
+      cleanChunks.splice(
+        extraInsertPos,
+        0,
+        pngChunkText.encode(`chara-ext-asset_:${path}`, base64),
+      );
+      extraInsertPos += 1;
+    }
   }
 
   return encodeChunks(cleanChunks);
