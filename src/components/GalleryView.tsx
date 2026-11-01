@@ -198,13 +198,7 @@ export const GalleryView: React.FC = () => {
       if (choice === 'overwrite') overwriteUuid = match.existing.uuid;
     }
 
-    try {
-      await importCardRecord(card, embeddedAssets, overwriteUuid);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Import failed.';
-      setImportError(message);
-      return false;
-    }
+    await importCardRecord(card, embeddedAssets, overwriteUuid);
     setImportSuccessMessage(`Successfully imported "${card.data.name}" from pasted text!`);
     setIsPasteModalOpen(false);
     return true;
