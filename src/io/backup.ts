@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { db, type StoredCard, type StoredLorebook, type ConnectionProfile, type AppSetting } from '../db';
+import { db, stripRemovedProfileFields, type StoredCard, type StoredLorebook, type ConnectionProfile, type AppSetting } from '../db';
 import { decryptText } from '../utils/crypto';
 import { useCardStore } from '../store/useCardStore';
 import { buf2b64, b642buf } from '../utils/binaryEncoding';
@@ -52,6 +52,13 @@ function normalizeAssetToUint8Array(val: any): Uint8Array | null {
   return null;
 }
 
+// Profiles are exported from an allowlist only: the five removed fields, the
+// database id and any stray key never leave the device in a backup file.
+const PROFILE_EXPORT_KEYS = [
+  'uuid', 'name', 'provider', 'model', 'baseUrl', 'isDefault',
+  'temperature', 'maxTokens', 'customPromptPricePer1K', 'customCompletionPricePer1K',
+] as const;
+
 export async function createFullBackupJson(includeApiKeys: boolean = false): Promise<string> {
   const cards = await db.cards.toArray();
   const lorebooks = await db.lorebooks.toArray();
@@ -78,15 +85,17 @@ export async function createFullBackupJson(includeApiKeys: boolean = false): Pro
   });
 
   const processedProfiles = connectionProfiles.map((prof) => {
-    if (includeApiKeys) {
-      return prof;
+    const out: Record<string, unknown> = {};
+    for (const k of PROFILE_EXPORT_KEYS) {
+      const v = (prof as unknown as Record<string, unknown>)[k];
+      if (v !== undefined) out[k] = v;
     }
-    const { apiKey, ...rest } = prof;
-    return {
-      ...rest,
-      apiKey: undefined,
-      ...(apiKey ? { apiKeyRedacted: true } : {}),
-    };
+    if (includeApiKeys) {
+      if (prof.apiKey !== undefined) out.apiKey = prof.apiKey;
+    } else if (prof.apiKey) {
+      out.apiKeyRedacted = true;
+    }
+    return out as unknown as ConnectionProfile;
   });
 
   const backup: FullBackupData = {
@@ -408,7 +417,7 @@ export async function restoreFullBackup(
       for (const prof of backupData.connectionProfiles) {
         if (!prof.uuid) continue;
         try {
-          const rec: ConnectionProfile & { apiKeyRedacted?: boolean } = { ...prof };
+          const rec: ConnectionProfile & { apiKeyRedacted?: boolean } = stripRemovedProfileFields({ ...prof });
           delete rec.id;
 
           const isRedacted = Boolean(rec.apiKeyRedacted);

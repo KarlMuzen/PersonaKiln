@@ -5,10 +5,10 @@ const PROFILE_PROVIDERS = new Set<ConnectionProfile['provider']>([
   'gemini', 'openai', 'anthropic', 'openrouter', 'ollama', 'custom',
 ]);
 
-const OPTIONAL_PROFILE_STRING_FIELDS = ['apiKey', 'baseUrl', 'systemOverride', 'customHeaders'] as const;
+const OPTIONAL_PROFILE_STRING_FIELDS = ['apiKey', 'baseUrl'] as const;
 const OPTIONAL_PROFILE_BOOLEAN_FIELDS = ['apiKeyRedacted', 'isDefault'] as const;
 const OPTIONAL_PROFILE_NUMBER_FIELDS = [
-  'id', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'contextLimit',
+  'id', 'temperature', 'maxTokens',
   'customPromptPricePer1K', 'customCompletionPricePer1K',
 ] as const;
 
