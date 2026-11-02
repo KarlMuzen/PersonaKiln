@@ -15,7 +15,7 @@ const LEGACY_STORES = {
 
 describe('profile cleanup', () => {
   it('upgrade: a version 5 database loses the five fields when the app db opens it', async () => {
-    const legacy = new Dexie('CardCrucibleDB');
+    const legacy = new Dexie('RoleplayForgeDB');
     legacy.version(5).stores(LEGACY_STORES);
     await legacy.table('connectionProfiles').add({
       uuid: 'prof-upgrade',

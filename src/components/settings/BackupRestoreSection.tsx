@@ -73,7 +73,7 @@ export const BackupRestoreSection: React.FC<BackupRestoreSectionProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const fileName = `cardcrucible_full_backup_${Date.now()}.json`;
+        const fileName = `roleplayforge_full_backup_${Date.now()}.json`;
         a.download = fileName;
         a.click();
         URL.revokeObjectURL(url);
@@ -89,7 +89,7 @@ export const BackupRestoreSection: React.FC<BackupRestoreSectionProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const fileName = `cardcrucible_full_backup_${Date.now()}.zip`;
+        const fileName = `roleplayforge_full_backup_${Date.now()}.zip`;
         a.download = fileName;
         a.click();
         URL.revokeObjectURL(url);

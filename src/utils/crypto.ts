@@ -48,7 +48,7 @@ export async function hashKey(key: CryptoKey): Promise<string> {
   );
   
   const enc = new TextEncoder();
-  const signatureBuffer = await crypto.subtle.sign('HMAC', hmacKey, enc.encode('CardCrucibleVerifier'));
+  const signatureBuffer = await crypto.subtle.sign('HMAC', hmacKey, enc.encode('RoleplayForgeVerifier'));
   const hashArray = Array.from(new Uint8Array(signatureBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }

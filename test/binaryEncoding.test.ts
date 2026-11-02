@@ -52,7 +52,7 @@ describe('binaryEncoding utilities', () => {
 
   describe('utf8ToBase64 & base64ToUtf8', () => {
     it('converts UTF-8 strings with special characters and emojis to Base64 and back', () => {
-      const original = 'CardCrucible 🧙‍♂️ ✨ — 日本語 / Español / Русский';
+      const original = 'Roleplay Forge 🧙‍♂️ ✨ — 日本語 / Español / Русский';
       const b64 = utf8ToBase64(original);
       const decoded = base64ToUtf8(b64);
       expect(decoded).toBe(original);

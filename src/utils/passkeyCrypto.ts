@@ -1,7 +1,7 @@
 /**
  * Pure WebAuthn PRF (Pseudo-Random Function) Passkey Crypto Utilities.
  *
- * Designed as a fast local unlock alternative for CardCrucible.
+ * Designed as a fast local unlock alternative for Roleplay Forge.
  * The master passphrase remains the sole root of trust.
  * Passkey enrollment wraps the in-memory master key with a key derived from
  * WebAuthn PRF output via HKDF-SHA256.
@@ -57,7 +57,7 @@ async function deriveWrappingKeyFromPrf(prfOutput: BufferSource | ArrayBuffer | 
       name: 'HKDF',
       hash: 'SHA-256',
       salt: new Uint8Array(0), // empty salt
-      info: enc.encode('CardCrucible-Passkey-Wrap-v1'),
+      info: enc.encode('RoleplayForge-Passkey-Wrap-v1'),
     },
     hkdfBaseKey,
     { name: 'AES-GCM', length: 256 },
@@ -83,13 +83,13 @@ export async function enrollPasskey(
       publicKey: {
         challenge,
         rp: {
-          name: 'CardCrucible',
+          name: 'Roleplay Forge',
           id: typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : undefined,
         },
         user: {
           id: userId,
-          name: 'cardcrucible_user',
-          displayName: 'CardCrucible User',
+          name: 'roleplayforge_user',
+          displayName: 'Roleplay Forge User',
         },
         pubKeyCredParams: [
           { alg: -7, type: 'public-key' }, // ES256
