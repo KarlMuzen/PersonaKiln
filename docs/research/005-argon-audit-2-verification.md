@@ -1,0 +1,86 @@
+# Research 005: Argon audit round 2 verification (2026-11-03)
+
+Findings and verdicts only, no decisions, no cards written. Source: Argon's second full audit, which the owner ran on 2026-11-03 from uploaded digest files (`RoleplayForge_digest.txt`, `RoleplayForge_tree.txt`), not from raw files at a pinned SHA. The report names no SHA (the workflow asks Argon to state "Read at SHA <sha> (pinned)"), so Claude cannot say which commit it read. Every verdict below is Claude's own check at `main` `ce04d1d6197a48b5d944edb0078c28b06cc344fd` (2026-11-02, the head on 2026-11-03; no open PR). The raw report stays in the owner's Argon chat; this note keeps only what was checked.
+
+How checked: Claude cloned `ce04d1d`, read the code behind each claim, ran `npm ci` (640 packages) and ran three throw-away vitest probes in a scratch test file (not committed; `git status` was clean afterwards). Probe results are quoted where they settle a claim. The GitHub connection cannot run CI, so no CI result is claimed.
+
+Labels: **V** verified in the code (read), **V-run** verified by a probe run, **P** partly right, **W** wrong or overstated, **U** unverified. "In BUGS" means `docs/BUGS.md` already holds it (the entry is not repeated here).
+
+Argon's line numbers often do not match this SHA (for example `cardSlice.ts:403,441` and `EditorView.tsx:396-409`); the mechanisms are mostly right, the numbers below are Claude's.
+
+## Findings F-01 to F-17
+
+| ID | Argon sev | Claim (short) | Verdict | Evidence at `ce04d1d` | Claude's severity |
+|---|---|---|---|---|---|
+| F-01 | P0 | A ZIP with several cards imports only the first | V, in BUGS (entry 1, Muse ran it on `1ef7dea`) | `GalleryView.tsx:307-345` sends every `.zip` to `importCardData`; `io/index.ts:173-186` (PK header) calls `readCardFromCharx`; `charx.ts:108` takes the first card-shaped JSON (`POSS_CARD_JSON_NAMES`), so the bulk loop never runs | P1 (silent partial import; the source ZIP is untouched) |
+| F-02 | P0 | `getCardCoverUrl` makes a new blob URL on every render and never revokes it | V (read); size of the effect unmeasured. **New, not in BUGS** | `gallery/galleryUtils.ts:23,37` call `URL.createObjectURL(new Blob(...))` and nothing revokes; callers run it in the component body with no memo: `EditorView.tsx:69-75`, `gallery/GalleryCardsGrid.tsx:62`, `AssistantView.tsx:59`. Also `EditorView.tsx:272` makes a preview URL that no handler revokes (the revoke at `:232` belongs to the export handler). Every other `createObjectURL` in `src/` has a matching revoke | P1 (phone memory; measure before claiming megabytes) |
+| F-03 | P1 | Bulk ZIP PNG exports carry `ccv3` only, no `chara` | V-run. **New, not in BUGS** | `exportCardData` passes `backfillV2: options.backfillV2` (`io/index.ts` ~339); `png.ts:304` writes `chara` only when it is true. Callers: `EditorView.tsx:213-216` and `utils/visualCardExporter.ts:435-437` pass `true`; `GalleryView.tsx:442` and `:491` (the two bulk ZIP handlers) do not. Probe: default PNG export keywords `["ccv3"]`, with `backfillV2: true` `["ccv3","chara"]`. `docs/DECISIONS.md` has no decision on the default | P1 (the owner's format rule is "write both") |
+| F-04 | P1 | Storage schemas strip unknown fields on first save | V-run for the mechanism; **effect overstated**; in BUGS (entry 21, "inferred" until now) | Import schemas end in `.passthrough()` (`cardSchema.ts:58,96,171,207`), the five storage schemas (`:63,101,132,176,212`) do not. Probe 1 (schemas called directly): loose parse kept an unknown top key, data key and entry key; storage parse kept none. Probe 2 (real `importCardData` path): `normalizeRawToV3Card` had already moved the unknown top-level and `data` keys into `data.extensions`, and the storage parse kept them there. Not shown: where an unknown lorebook entry key ends up after import (probe 2 printed it empty at entry level; its `extensions` were not printed) | P2 (defence in depth; no loss shown for imported cards) |
+| F-05 | P1 | The tab-hide flush leaves `name`, `tags`, `creator` stale | V, in BUGS (entry 26) | `useCardStore.ts` `flushPendingSave` does `.modify({ cardData, modification_date })`; the normal save `cardSlice.ts:320-328` writes all of them. Argon's first half (dotted-key updates) is BUGS entry 20 | P2 |
+| F-06 | P1 | Free Gemini keys fail on Crucible Run All (12 requests, no 429 handling) | P. `PROBE_RUNS = 3` (`utils/crucibleGrading.ts:16`), used at `DiagnosticScorePanel.tsx:241`; `DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash'` (`constants/models.ts:4`); no `429`, `Retry-After`, `AbortSignal` or retry anywhere in `services/llmAdapter.ts` (search empty). BUGS entry 32 covers cancel and timeouts, not 429 backoff. **The quota numbers are U** (see the time-sensitive table) | P2 |
+| F-07 | P1 | Cancelling the unlock prompt still sends the request with the `enc.v1.` value | V, in BUGS (entry 22) | `llmAdapter.ts:148-153`, try/catch around `getDecryptedApiKey` with fallback to `profile.apiKey`. Claude's earlier call stands: a bug (the card text goes to the provider the person chose), not a key leak | P2 |
+| F-08 | P1 | No passkey re-enrol after a recovery-key unlock on a passkey-only vault | V, in BUGS (entry 23) | `settings/SecuritySection.tsx:196` gates enrolment on `isPasskeySupported && isUnlocked && !isPasskeyOnly`; `:160` shows only the reset path for `isPasskeyOnly && isUnlocked` | P2 (security screen: a `required` card) |
+| F-09 | P1 | Covers never show in `ContextBar`, `Navigation`, `ChatPreviewModal` | V-run + V (read). **New, not in BUGS**; effect not seen on a phone | Probe: after a PNG round trip `card.data.avatar` is empty and the image sits at `embeded://icon/main.png`. The three components read only `data.avatar`: `ContextBar.tsx:90`, `Navigation.tsx:201`, `ChatPreviewModal.tsx:104,113,342,635` (`CardAvatar` falls back to initials). The Library and the editor use `getCardCoverUrl` and do show the cover. May be known | P2 |
+| F-10 | P1 | The Enhancer can never list a scenario run | V, in BUGS (entry 36) | `EnhancerView.tsx:63-82` keeps only runs with `runData.scores`; nothing writes `scores` (owner decision 2026-11-01: no AI judge). Argon's fix is a design change; BUGS says wire or delete | P2 (owner decision) |
+| F-11 | P2 | "Test in Chat" on alternate greeting N always opens at greeting 1 | V (read). **New, not in BUGS**; the screen outcome was not run | `GreetingsSection.tsx:111,179` call `onOpenChatPreviewWithGreeting(0)` and `(idx + 1)`; `EditorView.tsx:641` passes `() => setChatPreviewOpen(true)` and drops the index; `chatPreviewGreetingIndex` and its setter exist only in `store/slices/uiSlice.ts:73-74` and `types.ts:32-33` and nothing in `src/` reads them | P2 |
+| F-12 | P2 | Verify Export reports a false discrepancy when there is no cover | V, in BUGS (entry 2, Muse ran it) | `io/index.ts` 138-142 rewrites `ccdefault:` to `embeded://icon/main.png` only in the import reader. Argon's `EditorView.tsx:396-409` cite is wrong (that range is the lorebook diff) | P2 |
+| F-13 | P2 | PNG size guard checks each asset, not the file; `extraAssets` is a plain `{}` | V, in BUGS (entry 6 a and c) | `png.ts:317` checks one asset's base64 against 20 MB; `readCardFromPng` refuses a whole file over 20 MB (`png.ts:153,162`); `io/index.ts` builds `extraAssets` on `{}` | P2 |
+| F-14 | P2 | `..\\` and `__proto__` in ZIP paths | P. `charx.ts` ~75 rejects `../`, a leading `/` and a leading `\\`, not `..\\` (V); `fileDataMap` and `embeddedAssets` are plain objects (V). The `backup.ts` `__proto__` case is BUGS entry 26 (a). Path traversal is **inferred not exploitable**: names are only map keys and URIs in a browser app, never file paths | P2, low |
+| F-15 | P2 | Model table out of date | P. The table lacks `claude-sonnet-5-5`, `claude-haiku-5-5` and `gemini-3.8-flash` (V, search of `constants/models.ts`); the `claude-sonnet-5` line is marked "introductory rate through Aug 31 2026" (`models.ts:15`), so it shows a price the code itself says expired (V). **Prices and the `tool_choice` 400 claim are U** | P2 (cost tracker estimate only) |
+| F-16 | P2 | Dead code and config leftovers | V. `components/PortraitGuard.tsx` (BUGS entry 3) and `utils/orientationLock.ts` have no importer in `src/` or `test/`; `getAssetCategory` (`charx.ts:23`) has no caller; `vite` sits in `dependencies` and `devDependencies` (`package.json:43,66`); `metadata.json` still lists `MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API`. `orientationLock.ts` and `getAssetCategory` are new; the rest is in BUGS (entries 3 and 17) | P2, low |
+| F-17 | P2 | CI on Node 20 with no `permissions:`; CSP carries `wss:`; HSTS only in `public/_headers` | V, in BUGS (entry 17) | `.github/workflows/ci.yml` (Node 20, no `permissions` block); `vercel.json` has no `Strict-Transport-Security` and its CSP has `wss:`; `public/_headers` has HSTS. Whether production sends HSTS was not checked (see below) | P2 (`required` card) |
+
+## Claims from Argon's ledger (sections A to H)
+
+New and verified, not in BUGS:
+
+- **Persistent storage is requested only after vault setup or unlock (V).** `store/slices/sessionSlice.ts:20-24` defines `requestPersistentStorageOnce`; its call sites are `setupPassphrase` (`:99`), `setupPasskeyProtection` (`:171`), `unlockSession` (`:219`, `:228`), `unlockWithRecoveryCode` (`:273`) and `unlockWithPasskeyAction` (`:384`). Nothing calls it on card create, import or save. `docs/ROADMAP.md` lines 141 and 222 say it "is already requested", which is true only for a person who set up a vault. Whether Android Chrome grants persistence to an installed PWA anyway is not checked (inferred, not read).
+- **Every autosave reloads the whole Library (V).** `cardSlice.ts:54-88` (`triggerAutosave`, 800 ms debounce) calls `saveActiveCardMetadata` (`:306-351`), which ends with `loadCardsFromDb()` (`:341`), which runs `db.cards.toArray()` (`:95-101`): all cards with their binary assets and snapshots. Memory and time on a large Library are not measured.
+- **Structured output is sent only for OpenAI and OpenRouter (V).** `llmAdapter.ts:276,283` gate `response_format` on those two providers; Gemini (`:180-182`) and Anthropic (`:449-459`) have their own forms; `ollama` and `custom` get none. That they then reply with prose instead of JSON patches, and what the Assistant does with such a reply, was not read (inferred).
+- **`embedded://` (two d) is never read (V).** A search of `src/` finds no `embedded://`; `docs/research/001-st-spec-verification.md` (lines 72 and 78) says reading code should accept both spellings and write `embeded://`. `pickCoverBytes` and `getCardCoverUrl` check `embeded://` only; for a CHARX the first-asset fallback in `getCardCoverUrl` may still show some image (inferred, not run).
+- **No timeout on the Chub fetch (V).** `io/chub.ts:56-58` calls `fetch(cdnPngUrl)` with no signal.
+
+Right, and already known:
+
+- **Card 058 is merged in the code, and the state docs are stale (V).** `1ef7dea` "Full rebrand (#58)"; `PROJECT_STATE.md` ("Last updated 2026-11-02", `main` head `d9fdc91`) still says card 058 is open with no PR, and `docs/BUGS.md` line 5 still says "Still to run: file 058". A case-insensitive search for `cardcrucible` and `card crucible` finds nothing in `src/`, `public/`, `scripts/`, `index.html`, `package.json`, `vite.config.ts`, and `test/` has no match for `cardcrucible`.
+- **No HTML injection sinks (V).** A search of `src/` finds no `dangerouslySetInnerHTML`, `.innerHTML`, `outerHTML`, `document.write` or `eval(`.
+- **Counts.** 63 test files in `test/` (`ls`), 226 tracked files (`git ls-files`; Argon says 216 text files in its digest, binaries and lockfiles were stripped). No test file is named for `AssistantView`, `ChatPreviewModal`, `PayloadView`, `PreFlightAuditModal` or `visualCardExporter` (name search only; another test may import them).
+- **Timestamps are in seconds**: `cardSlice.ts:311` (`Math.floor(Date.now() / 1000)`) and the same in the tab-hide flush.
+- **`CryptoKey` is created extractable** at `utils/crypto.ts:32` (comment: "extractable for hashing"). Argon's other line cites (`sessionSlice.ts` 103, 234, 347) were not found by search. Low; no XSS sink exists to read it (see above).
+
+Wrong or overstated:
+
+- **Chub "path traversal" (W).** `io/chub.ts:12-45`: a URL goes through `new URL(...)`, which resolves `..` segments before `pathname` is read, and the fallback regex allows only `[a-zA-Z0-9_-]` and one slash. The only true part is the missing timeout (above).
+- **F-04 as P1 data loss (W, see the table).** F-14 as an exploit (W, see the table).
+- **Argon's "earlier claim of a Florida LLC was fabricated"**: not checkable here; Claude has no record of that claim in the repo.
+
+## Time-sensitive claims (rule: a current source and date, or UNVERIFIED)
+
+| Claim | Status | What Claude could check on 2026-11-03 |
+|---|---|---|
+| Gemini free tier: 5 RPM and 20 RPD for `gemini-3.6-flash` and `gemini-3.8-flash`, flash-lite 15 RPM and 500 RPD, Pro models none | **UNVERIFIED** | Google's rate-limit page could not be fetched (`robots_disallowed`; not worked around). An Apidog article dated 2026-10-12 says only that the free tier has per-minute and per-day caps and returns 429, with no numbers |
+| `gemini-3.8-flash` exists | **UNVERIFIED** | Not found in any source read |
+| `claude-sonnet-5-5` and `claude-haiku-5-5` are current model ids | Names confirmed by Anthropic's own product description available to Claude in this session (2026-11-03) | No prices in it |
+| Sonnet 5.5 at 2 and 10 dollars, Haiku 5.5 at 0.10 and 0.50 dollars per million tokens | **UNVERIFIED** | The Anthropic pricing page was not on the session's fetch allowlist; a price-aggregator page failed to load |
+| `tool_choice: { type: 'tool' }` returns HTTP 400 on Sonnet 5.5 | **UNVERIFIED** | Not checked |
+| Jules read-only after 2026-11-11, shut down 2026-12-31, announced 2026-10-29 | Secondary source only | SmartScope article published 2026-10-30 gives those dates and names Google's "Jules Turndown" changelog; the changelog itself was not read. Not relevant to this repo's workflow (roles are Claude, Muse, ChatGPT, Argon) |
+| Gemini CLI, GitHub Copilot Free, Codespaces and Trae limits and prices | **UNVERIFIED**, not checked | Not relevant to a repo change |
+| Node 20 end of life 2026-04-30 | In BUGS (entry 17) from endoflife.date, earlier chat | Not re-checked |
+| No GitHub, USPTO or Florida registry hit for the name | **UNVERIFIED** | Argon's searches, not re-run |
+| Production serves HSTS and the CSP as in `vercel.json` | **UNKNOWN** | `curl -I https://roleplayforge.vercel.app` from this sandbox got a 403 from the proxy; not retried. Inferred, not a source read: Vercel reads headers from `vercel.json`, so `public/_headers` may not apply there |
+
+## Argon's setup proposals against the repo's own rules
+
+Not decided here; they need the owner's word.
+
+- **`AGENTS.md`**: a new root file. `docs/AI_WORKFLOW.md` already has a fixed pointer for each platform, and "no new doc type without the owner's word". Argon's draft restates the frozen identifiers, so it would duplicate `PROJECT_STATE.md` Guardrails.
+- **`.github/pull_request_template.md`**: `docs/AUTOMATION.md` (line 13) lists it as not present. It would pre-fill the progress format the workflow already requires.
+- **Dependabot**: `docs/AUTOMATION.md` (item 2) already proposes the same file, weekly, grouped, majors ignored, and defers it (Decision 17). A Dependabot branch is not a `wip/NNN` branch, and a dependency update touches `package.json`, so the workflow's PR rules would need a sentence.
+- **CI Node 22, `permissions: contents: read`, HSTS in `vercel.json`, `wss:` out of both CSPs**: all in BUGS entry 17; CI and deploy config are `Review: required` cards. The CSP must keep `https:` and `http://localhost:*` / `http://127.0.0.1:*` in `connect-src` (user-defined providers and local Ollama).
+- **Secret scanning and the `main-ci-gate` ruleset**: already on (`docs/AUTOMATION.md`, owner screenshot).
+- **Argon's card batching (059 to 062) and "tag v1.0.0 first"**: it does not match the owner plan (finish the cutline, then in-depth phone testing, then review and fixing).
+- **`.github/` today**: `workflows/` only (no `dependabot.yml`, no template, no `AGENTS.md`, no `CLAUDE.md`).
+
+## Not checked
+
+The rest of Argon's section A to H detail (Zod limits, the `mergeLorebookLayers` ordering and the conflict counts, which are BUGS entries 31 and 37; CHARX size caps beyond what `charx.ts` lines 9-12 show; passkey and vault internals; PWA manifest details; GitHub settings). Argon's section 5 to 8 (setup steps, workflow, roadmap) was compared only for the points above. Live production headers (above). No finding here was run on a phone.
