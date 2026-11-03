@@ -3,6 +3,7 @@ import { useCardStore } from '../store/useCardStore';
 import { useDialogStore } from '../store/useDialogStore';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { CardAvatar } from './CardAvatar';
+import { getCardCoverUrl } from './gallery/galleryUtils';
 import type { StoredCard } from '../db';
 import { countTokens, countTokensAsync } from '../utils/tokenizer';
 import { shouldSendOnEnter } from '../utils/chatKeys';
@@ -43,8 +44,10 @@ export const ChatPreviewModal: React.FC = () => {
   const {
     isChatPreviewOpen,
     setChatPreviewOpen,
+    chatPreviewGreetingIndex,
     activeCard,
     activeCardUuid,
+    activeCardEmbeddedAssets,
     cards,
     profiles,
     activeProfileUuid,
@@ -96,12 +99,23 @@ export const ChatPreviewModal: React.FC = () => {
 
   // Full cast for this preview session: the active card plus any characters
   // added to the "Group Preview" scene from the gallery.
+  const primaryCoverUrl = useMemo(
+    () =>
+      activeCard
+        ? getCardCoverUrl({
+            cardData: activeCard,
+            embeddedAssets: activeCardEmbeddedAssets,
+          } as StoredCard) || activeCard.data.avatar
+        : undefined,
+    [activeCard, activeCardEmbeddedAssets]
+  );
+
   const sceneCharacters: SceneCharacter[] = useMemo(() => {
     if (!activeCard) return [];
     const primary: SceneCharacter = {
       uuid: activeCardUuid || 'primary',
       name: activeCard.data.name || 'Character',
-      avatar: activeCard.data.avatar,
+      avatar: primaryCoverUrl,
       data: activeCard.data,
     };
     const members = groupMemberUuids
@@ -110,11 +124,11 @@ export const ChatPreviewModal: React.FC = () => {
       .map((c) => ({
         uuid: c.uuid,
         name: c.cardData.data.name || c.name || 'Character',
-        avatar: c.cardData.data.avatar,
+        avatar: getCardCoverUrl(c) || c.cardData.data.avatar,
         data: c.cardData.data,
       }));
     return [primary, ...members];
-  }, [activeCard, activeCardUuid, groupMemberUuids, cards]);
+  }, [activeCard, activeCardUuid, primaryCoverUrl, groupMemberUuids, cards]);
 
   const isGroupMode = sceneCharacters.length > 1;
 
@@ -135,6 +149,16 @@ export const ChatPreviewModal: React.FC = () => {
     if (!isChatMenuOpen) commitUserNameDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChatMenuOpen]);
+
+  useEffect(() => {
+    if (!isChatPreviewOpen || !activeCard || sceneCharacters.length === 0) return;
+    const nextIdx = chatPreviewGreetingIndex || 0;
+    setActiveGreetingIdx(nextIdx);
+    const initialMsgs = buildInitialGreetingMessages(sceneCharacters, userName, nextIdx);
+    setMessages(initialMsgs);
+    setIsEditingLastMessage(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChatPreviewOpen, chatPreviewGreetingIndex]);
 
   useEffect(() => {
     if (!activeCard || sceneCharacters.length === 0) return;
@@ -339,7 +363,7 @@ export const ChatPreviewModal: React.FC = () => {
 
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-void-800 border border-knight-700 shrink-0 overflow-hidden flex items-center justify-center">
               <CardAvatar
-                src={d.avatar}
+                src={primaryCoverUrl}
                 name={d.name}
                 alt="Avatar"
                 className="w-full h-full object-cover"
@@ -632,7 +656,7 @@ export const ChatPreviewModal: React.FC = () => {
               ? sceneCharacters.find((sc) => sc.uuid === m.speakerUuid)
               : undefined;
             const displayName = isUser ? userName : speaker ? speaker.name : d.name;
-            const displayAvatar = isUser ? undefined : speaker ? speaker.avatar : d.avatar;
+            const displayAvatar = isUser ? undefined : speaker ? speaker.avatar : primaryCoverUrl;
 
             return (
               <div

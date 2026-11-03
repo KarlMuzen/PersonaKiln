@@ -44,6 +44,7 @@ export const EditorView: React.FC = () => {
     saveActiveCard,
     saveState,
     setChatPreviewOpen,
+    setChatPreviewGreetingIndex,
     activeCardEmbeddedAssets,
     setCardCoverImage,
     removeCardCoverImage,
@@ -432,13 +433,31 @@ export const EditorView: React.FC = () => {
       });
 
       const origAssets = original.assets || [];
+      const expectedAssets =
+        lastExported.format === 'png' || lastExported.format === 'visual_png'
+          ? (() => {
+              const iconAsset = origAssets.find((a) => a.type === 'icon');
+              if (!iconAsset || iconAsset.uri === 'ccdefault:') {
+                return [
+                  {
+                    type: 'icon',
+                    uri: 'embeded://icon/main.png',
+                    name: 'main',
+                    ext: 'png',
+                  },
+                  ...origAssets.filter((a) => a.type !== 'icon'),
+                ];
+              }
+              return origAssets;
+            })()
+          : origAssets;
       const reimpAssets = reimported.assets || [];
-      const assetsMatch = canonicalizeJson(origAssets) === canonicalizeJson(reimpAssets);
+      const assetsMatch = canonicalizeJson(expectedAssets) === canonicalizeJson(reimpAssets);
       diffs.push({
         key: 'assets',
         label: 'Embedded Assets Payload',
         category: 'Extensions & Assets',
-        liveValue: formatValue(origAssets),
+        liveValue: formatValue(expectedAssets),
         exportedValue: formatValue(reimpAssets),
         isMatch: assetsMatch,
         diffSummary: assetsMatch
@@ -638,7 +657,10 @@ export const EditorView: React.FC = () => {
           cardData={d}
           updateActiveCardData={updateActiveCardData}
           greetingTokens={greetingTokens}
-          onOpenChatPreviewWithGreeting={() => setChatPreviewOpen(true)}
+          onOpenChatPreviewWithGreeting={(idx) => {
+            setChatPreviewGreetingIndex(idx);
+            setChatPreviewOpen(true);
+          }}
         />
 
         <LorebookLinksSection

@@ -17,6 +17,8 @@ import {
 import { validateCardCompleteness } from '../utils/validation';
 import { WORKSPACE_TABS, LAB_TABS } from '../constants/navigation';
 import { CardAvatar } from './CardAvatar';
+import { getCardCoverUrl } from './gallery/galleryUtils';
+import type { StoredCard } from '../db';
 import { ContextMoreMenu } from './ContextMoreMenu';
 
 const WORKSPACE_SUB_TABS: { id: TabType; label: string; icon: React.ReactNode }[] = [
@@ -36,6 +38,7 @@ export const ContextBar: React.FC = () => {
     activeTab,
     setActiveTab,
     activeCard,
+    activeCardEmbeddedAssets,
     setChatPreviewOpen,
     setPreFlightAuditOpen,
     setIsOnboardingOpen,
@@ -53,6 +56,9 @@ export const ContextBar: React.FC = () => {
   const isLabTab = LAB_TABS.includes(activeTab);
   const mode = isWorkspaceTab ? 'Forge' : 'Test';
   const tabs = isWorkspaceTab ? WORKSPACE_SUB_TABS : isLabTab ? LAB_SUB_TABS : [];
+  const coverUrl = activeCard
+    ? getCardCoverUrl({ cardData: activeCard, embeddedAssets: activeCardEmbeddedAssets } as StoredCard)
+    : null;
   const cardWarnings = validateCardCompleteness(activeCard);
   const isInvalid = cardWarnings.length > 0;
 
@@ -87,7 +93,7 @@ export const ContextBar: React.FC = () => {
             <div className="w-6 h-6 rounded-md bg-void-800 border border-knight-700/60 overflow-hidden flex items-center justify-center shrink-0">
               {activeCard ? (
                 <CardAvatar
-                  src={activeCard.data.avatar}
+                  src={coverUrl}
                   name={activeCard.data.name}
                   alt=""
                   className="w-full h-full object-cover"
