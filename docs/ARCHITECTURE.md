@@ -68,7 +68,7 @@ Notes:
 
 ## 2. Data safety
 
-Frozen identifiers (do not rename): DB name `CardCrucibleDB`, settings keys, the `enc.v1.` format and passkey identifiers (`PROJECT_STATE.md` Guardrails). The sync data-channel label went with the code in card 034; no sync identifier remains.
+Frozen identifiers (do not rename): DB name `RoleplayForgeDB` (renamed from the old brand name by card 058, PR #58), settings keys, the `enc.v1.` format and passkey identifiers (`PROJECT_STATE.md` Guardrails). The sync data-channel label went with the code in card 034; no sync identifier remains.
 
 ```mermaid
 flowchart LR
@@ -82,7 +82,7 @@ flowchart LR
         backupParse["validateBackupData (src/schemas/backupSchema) in parseBackupPayload and restoreFullBackup (zip or JSON, 200 MB cap)"]
         hooks["Dexie write hooks (Zod storage schema on cards and lorebooks)"]
     end
-    dexie[("IndexedDB CardCrucibleDB: cards, lorebooks, connectionProfiles, settings")]
+    dexie[("IndexedDB RoleplayForgeDB: cards, lorebooks, connectionProfiles, settings")]
     subgraph secrets ["Secrets (frozen identifiers)"]
         vault["API keys: enc.v1 AES-GCM, key from passphrase (PBKDF2) or passkey"]
         vaultKeys["Settings keys: crypto_mode, passkey_credential_id, passkey_wrapped_key, passkey_prf_salt"]
