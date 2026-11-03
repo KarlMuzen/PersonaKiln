@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { CardAvatar } from './CardAvatar';
+import { getCardCoverUrl } from './gallery/galleryUtils';
+import type { StoredCard } from '../db';
 
 
 export const Navigation: React.FC = () => {
@@ -31,12 +33,16 @@ export const Navigation: React.FC = () => {
     setTheme,
     createNewCard,
     activeCard,
+    activeCardEmbeddedAssets,
     setChatPreviewOpen,
     setIsOnboardingOpen,
     profiles,
   } = useCardStore();
   const { getTotalEstimatedCost } = useTokenTracker();
   const totalEstimatedCost = getTotalEstimatedCost(profiles);
+  const coverUrl = activeCard
+    ? getCardCoverUrl({ cardData: activeCard, embeddedAssets: activeCardEmbeddedAssets } as StoredCard)
+    : null;
 
   const [lastWorkspaceTab, setLastWorkspaceTab] = useState<TabType>('editor');
   const [lastLabTab, setLastLabTab] = useState<TabType>('crucible');
@@ -198,7 +204,7 @@ export const Navigation: React.FC = () => {
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-void-800 border border-knight-700 shrink-0 overflow-hidden flex items-center justify-center">
                   <CardAvatar
-                    src={activeCard.data.avatar}
+                    src={coverUrl}
                     name={activeCard.data.name}
                     alt="Avatar"
                     className="w-full h-full object-cover"
