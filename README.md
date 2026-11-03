@@ -2,9 +2,9 @@
 
 **Live App (PWA):** [roleplayforge.vercel.app](https://roleplayforge.vercel.app) · **Source:** [github.com/KarlMuzen/RoleplayForge](https://github.com/KarlMuzen/RoleplayForge) · **Docs:** [Project State](PROJECT_STATE.md) | [Platform Support](docs/PLATFORM_SUPPORT.md) | [Roadmap](docs/ROADMAP.md)
 
-**Roleplay Forge** is the planned evolution of this CardCrucible-derived, local-first browser application into a unified workbench for authoring, organizing, converting, and testing AI roleplay assets. The aim is to give creators a reliable place to manage **Character Cards (V2/V3, PNG, JSON, CHARX)**, **lorebooks**, **generation presets**, and **repeatable LLM evaluations** without overstating cross-platform compatibility.
+**Roleplay Forge** is a local-first browser workbench for authoring, organizing, converting, and testing AI roleplay assets. The aim is to give creators a reliable place to manage **Character Cards (V2/V3, PNG, JSON, CHARX)**, **lorebooks**, **generation presets**, and **repeatable LLM evaluations** without overstating cross-platform compatibility.
 
-> **Repository state (2026-10-31):** Production deploys from `main` to [roleplayforge.vercel.app](https://roleplayforge.vercel.app) as an installable Progressive Web App (PWA), still built on the CardCrucible codebase. Since the first UI pass it has gained a phone-first Library and Details layout, a context bar (undo, redo, save status), paste-to-card import, a chat test bench for cards, backup export that can leave API keys out, and an install prompt. The AI cover generator and device-to-device sync were removed on purpose; move data between devices with a backup file. CI verifies lint/type checking, tests, and a production PWA build. Many owner phone checks and Android installed-PWA behavior still need a manual pass (see [Project state](PROJECT_STATE.md) and [known bugs](docs/BUGS.md)).
+> **Repository state (2026-11-03 — v1.0.0):** Production deploys from `main` to [roleplayforge.vercel.app](https://roleplayforge.vercel.app) as an installable Progressive Web App (PWA). Includes a phone-first Library and Details layout, a context bar (undo, redo, save status), paste-to-card import, a chat test bench for cards (with alternate greeting and group preview support), multi-card ZIP import/export, backup export that can leave API keys out, and an install prompt. Move data between devices with a backup file. CI verifies lint/type checking, 62 test suites, and a production PWA build (see [Project state](PROJECT_STATE.md) and [known bugs](docs/BUGS.md)).
 
 ---
 
@@ -13,12 +13,12 @@
 The current codebase includes:
 
 - **Character Card V2 & V3 Studio:** A searchable card gallery and full Character Card V2/V3 editing workflows.
-- **Multi-Format Import & Export:** PNG card metadata, JSON, and CHARX import/export paths, plus a public Chub card import path and paste-to-card import.
-- **Lorebook Editor & Diagnostics:** Lorebook entry editing, activation keys, regex options, and overlap utilities.
+- **Multi-Format Import & Export:** PNG card metadata (with V2 backfill and extra-asset chunk preservation), JSON, CHARX, and multi-card ZIP import/export paths, plus a public Chub card import path and paste-to-card import.
+- **Lorebook Editor & Diagnostics:** Lorebook entry editing, activation keys, regex options, position preservation, and overlap utilities.
 - **Schema-Validated AI Patching:** AI-proposed card patches with diff review, selective application, and undo/redo support.
 - **Scenario Testing & Model Evaluation:** Card variants, comparison tools, chat test bench, scenario runs, transcript review, and diagnostic metrics.
 - **Multi-Provider LLM Connections:** Direct connections to configured model providers, including **Google Gemini**, **OpenAI**, **Anthropic**, **OpenRouter**, and local **Ollama** endpoints where the provider/endpoint supports them.
-- **Local-First Storage & Backups:** Local browser storage (IndexedDB), backup/restore (with the option to exclude API keys), and optional passphrase encryption for saved API keys. Device-to-device sync was removed (card 034); move data between devices with a backup file.
+- **Local-First Storage & Backups:** Local browser storage (IndexedDB), backup/restore (with the option to exclude API keys), and optional passphrase/passkey encryption for saved API keys.
 - **Installable PWA:** Progressive Web App configuration for offline-capable, installable desktop and mobile browser use.
 
 Feature presence does not, by itself, prove complete compatibility with every receiving platform. See the [platform support matrix](docs/PLATFORM_SUPPORT.md) for the limits of current claims.
@@ -39,7 +39,7 @@ Feature presence does not, by itself, prove complete compatibility with every re
 ## Work Areas
 
 ### Library and Card Studio
-Organize character cards, edit supported V2/V3 fields, import and export known formats (PNG, JSON, CHARX), manage variants, and run local consistency and token-budget checks.
+Organize character cards, edit supported V2/V3 fields, import and export known formats (PNG, JSON, CHARX, ZIP), manage variants, and run local consistency and token-budget checks.
 
 ### Lorebook Studio
 Create and edit world-info/lorebook entries, activation keys, regex options, and ordering. Expand toward fixture-based validation of platform-specific activation behavior.
@@ -62,7 +62,7 @@ Offer per-format/per-platform import and export adapters, round-trip tests, and 
 
 The application is designed around local browser storage and direct calls to the user's chosen model provider. Do not assume that prompts, selected card text, or transcripts stay local when an AI feature is used: they may be sent to that provider.
 
-Cards and lorebooks are stored in browser IndexedDB. The optional master passphrase encrypts saved API keys; it does **not** encrypt all card/lorebook content stored in the browser. Losing the passphrase can make encrypted keys unrecoverable. The project has not undergone a formal third-party security audit. Review the in-app security guidance before storing sensitive content.
+Cards and lorebooks are stored in browser IndexedDB (`RoleplayForgeDB`). The optional master passphrase or passkey encrypts saved API keys; it does **not** encrypt all card/lorebook content stored in the browser. Losing the passphrase and recovery key can make encrypted keys unrecoverable. The project has not undergone a formal third-party security audit. Review the in-app security guidance before storing sensitive content.
 
 ---
 
@@ -87,3 +87,24 @@ npm run dev
 npm run lint
 npm test
 npm run build
+```
+
+The Vite development server normally uses port `3000`. The current CI workflow runs dependency installation, lint/type checking, automated tests, and `npm run build` (which regenerates PWA icons from `public/forge-mark.svg`). A green CI run verifies the production bundle for that commit, but it does not replace the installed-PWA smoke test on Android. `scripts/smoke.py` (Python Playwright, run by hand against `vite preview`; usage is in its docstring) is a manual browser smoke test and is not part of CI.
+
+---
+
+## Contribution and Release Rules
+
+- Add or extend fixtures for every new import/export capability.
+- Test `import → edit → export → re-import` for data-bearing formats.
+- Preserve unknown extension fields where feasible and report unsupported or dropped fields.
+- Date platform compatibility claims and cite the tested version/schema.
+- Label model pricing as estimated and potentially stale unless it is fetched and verified.
+- Keep provider credentials out of card exports, logs, and test fixtures.
+- Update the relevant docs when behavior or support boundaries change. There is no changelog file: squash-merged pull request titles are the changelog.
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE) for the original CardCrucible license and attribution. Retain that attribution through the transition to Roleplay Forge.
