@@ -4,7 +4,7 @@ import {
   type CharacterCardV3,
 } from '../schemas/cardSchema';
 import { normalizeRawToV3Card } from './converter';
-import { readCardFromPng } from './png';
+import { looksLikeStandaloneLorebook } from '../utils/normalizeLorebook';
 
 const MAX_ENTRIES = 500;
 const MAX_TOTAL_UNCOMPRESSED_SIZE = 250 * 1024 * 1024; // 250 MB
@@ -15,6 +15,23 @@ export interface ReadCharxResult {
   card: CharacterCardV3;
   embeddedAssets: Record<string, Uint8Array>; // URI (e.g., 'embeded://path') -> Uint8Array
   warnings?: string[];
+}
+
+function isCharacterCardJson(parsed: unknown): parsed is Record<string, unknown> {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+  const obj = parsed as Record<string, unknown>;
+  if (obj.spec === 'lorebook_v3' || looksLikeStandaloneLorebook(obj)) return false;
+  const data =
+    obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)
+      ? (obj.data as Record<string, unknown>)
+      : undefined;
+  return Boolean(
+    obj.spec === 'chara_card_v3' ||
+      obj.spec === 'chara_card_v2' ||
+      data?.name ||
+      obj.name ||
+      obj.char_name
+  );
 }
 
 /**
@@ -66,10 +83,6 @@ export async function readCardFromCharx(zipBuffer: Uint8Array): Promise<ReadChar
   let totalUncompressed = 0;
   const compressedArchiveSize = zipBuffer.byteLength || 1;
 
-  let cardFileEntryPath: string | null = null;
-  let rawParsedCard: any = null;
-  let cardFromPng: CharacterCardV3 | null = null;
-
   // 1. Uncompress and safety check all files
   const fileDataMap: Record<string, Uint8Array> = {};
 
@@ -101,83 +114,53 @@ export async function readCardFromCharx(zipBuffer: Uint8Array): Promise<ReadChar
       throw new Error(`Import failed: Suspicious compression ratio in archive. Possible zip bomb.`);
     }
 
+    if (relativePath.startsWith('__MACOSX') || relativePath.includes('/.')) continue;
+
     fileDataMap[relativePath] = data;
   }
 
-  // 2. Find the character card file inside the zip
+  if (Object.keys(fileDataMap).some((p) => p.toLowerCase().endsWith('.charx'))) {
+    throw new Error('Import failed: Archive contains nested .charx files, not a single CHARX card.');
+  }
+
+  // 2. Find all character card JSON files inside the zip
   const POSS_CARD_JSON_NAMES = ['card.json', 'character.json', 'card.v3.json', 'card.v2.json', 'data.json'];
-  
-  // Check exact JSON matches
-  for (const candidate of POSS_CARD_JSON_NAMES) {
-    const foundPath = Object.keys(fileDataMap).find(
-      (p) => p.toLowerCase() === candidate || p.toLowerCase().endsWith('/' + candidate)
-    );
-    if (foundPath) {
-      try {
-        const text = new TextDecoder('utf-8').decode(fileDataMap[foundPath]);
-        rawParsedCard = JSON.parse(text);
-        cardFileEntryPath = foundPath;
-        break;
-      } catch {
-        // ignore
+  const cardJsonCandidates: { path: string; parsed: Record<string, unknown>; isStandardName: boolean }[] = [];
+
+  for (const [relPath, bytes] of Object.entries(fileDataMap)) {
+    const lower = relPath.toLowerCase();
+    if (!lower.endsWith('.json')) continue;
+    try {
+      const text = new TextDecoder('utf-8').decode(bytes);
+      const parsed = JSON.parse(text);
+      if (isCharacterCardJson(parsed)) {
+        const isStandardName = POSS_CARD_JSON_NAMES.some(
+          (candidate) => lower === candidate || lower.endsWith('/' + candidate)
+        );
+        cardJsonCandidates.push({ path: relPath, parsed, isStandardName });
       }
+    } catch {
+      // ignore non-JSON or malformed JSON assets
     }
   }
 
-  // If no exact match, search all .json files in zip
-  if (!rawParsedCard) {
-    for (const [relPath, bytes] of Object.entries(fileDataMap)) {
-      if (relPath.toLowerCase().endsWith('.json')) {
-        try {
-          const text = new TextDecoder('utf-8').decode(bytes);
-          const parsed = JSON.parse(text);
-          if (parsed && typeof parsed === 'object') {
-            if (
-              parsed.spec === 'chara_card_v3' ||
-              parsed.spec === 'chara_card_v2' ||
-              parsed.data?.name ||
-              parsed.name ||
-              parsed.char_name
-            ) {
-              rawParsedCard = parsed;
-              cardFileEntryPath = relPath;
-              break;
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
+  if (cardJsonCandidates.length === 0) {
+    throw new Error('Import failed: No character card JSON found in CHARX archive.');
   }
 
-  // If no JSON card found, check for embedded PNG card
-  if (!rawParsedCard) {
-    for (const [relPath, bytes] of Object.entries(fileDataMap)) {
-      if (relPath.toLowerCase().endsWith('.png')) {
-        try {
-          const pngRes = readCardFromPng(bytes);
-          if (pngRes && pngRes.card) {
-            cardFromPng = pngRes.card;
-            cardFileEntryPath = relPath;
-            break;
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
+  if (cardJsonCandidates.length > 1) {
+    throw new Error('Import failed: Archive contains multiple character cards.');
   }
 
-  // Construct card
-  let card: CharacterCardV3;
-  if (cardFromPng) {
-    card = cardFromPng;
-  } else {
-    const norm = normalizeRawToV3Card(rawParsedCard || {});
-    card = norm.card;
-    if (norm.warnings) warnings.push(...norm.warnings);
+  const chosen = cardJsonCandidates[0];
+  if (!chosen.isStandardName && Object.keys(fileDataMap).length > 1) {
+    throw new Error('Import failed: Archive contains multiple files without a standard CHARX descriptor.');
   }
+
+  const cardFileEntryPath = chosen.path;
+  const norm = normalizeRawToV3Card(chosen.parsed);
+  const card: CharacterCardV3 = norm.card;
+  if (norm.warnings) warnings.push(...norm.warnings);
 
   // 3. Collect embedded assets
   for (const [relativePath, data] of Object.entries(fileDataMap)) {
