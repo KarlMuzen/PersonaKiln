@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { readCardFromCharx } from '../src/io/charx';
+import { writeCardToPng } from '../src/io/png';
 import { CharacterCardV3 } from '../src/schemas/cardSchema';
 
 describe('charx io', () => {
@@ -47,16 +48,24 @@ describe('charx io', () => {
   it('rejects zip bomb / compression ratio', async () => {
     const zip = new JSZip();
     zip.file('card.json', JSON.stringify(dummyCard));
-    
-    // Create a highly compressible payload
-    const payload = new Uint8Array(2 * 1024 * 1024); // 2MB of zeros
+    const payload = new Uint8Array(2 * 1024 * 1024);
     zip.file('big.txt', payload);
-    
-    // The zip will compress this to almost nothing.
     const buffer = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
-    
-    // Wait, the logic is: totalUncompressed / compressedArchiveSize > MAX_COMPRESSION_RATIO
-    // For 2MB of 0s, the zip might be ~200 bytes. 2MB / 200 > 10000. This triggers the bomb check.
     await expect(readCardFromCharx(buffer)).rejects.toThrow(/Suspicious compression ratio/);
+  });
+
+  it('rejects a multi-card JSON zip so bulk import can unpack all cards', async () => {
+    const zip = new JSZip();
+    zip.file('Alice.json', JSON.stringify({ ...dummyCard, data: { ...dummyCard.data, name: 'Alice' } }));
+    zip.file('Bob.json', JSON.stringify({ ...dummyCard, data: { ...dummyCard.data, name: 'Bob' } }));
+    const buffer = await zip.generateAsync({ type: 'uint8array' });
+    await expect(readCardFromCharx(buffer)).rejects.toThrow(/multiple character cards/);
+  });
+
+  it('rejects a PNG-only zip with no CHARX card JSON', async () => {
+    const zip = new JSZip();
+    zip.file('Alice.png', writeCardToPng(dummyCard));
+    const buffer = await zip.generateAsync({ type: 'uint8array' });
+    await expect(readCardFromCharx(buffer)).rejects.toThrow(/No character card JSON/);
   });
 });

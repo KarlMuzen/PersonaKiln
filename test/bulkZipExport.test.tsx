@@ -2,6 +2,8 @@
 import '../test/setup';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import JSZip from 'jszip';
+import extractChunks from 'png-chunks-extract';
+import pngChunkText from 'png-chunk-text';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GalleryView } from '../src/components/GalleryView';
 import { useCardStore } from '../src/store/useCardStore';
@@ -46,7 +48,7 @@ describe('uniqueZipFileName', () => {
   });
 });
 
-describe('GalleryView bulk ZIP export', () => {
+describe('GalleryView bulk ZIP export and multi-card ZIP import', () => {
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
   let capturedBlobs: Blob[] = [];
@@ -105,7 +107,7 @@ describe('GalleryView bulk ZIP export', () => {
     });
   });
 
-  it('exports two same-named cards as two files', async () => {
+  it('exports two same-named cards as two files with both ccv3 and chara chunks', async () => {
     render(<GalleryView />);
     const cards = await screen.findAllByText('Aria');
     expect(cards.length).toBeGreaterThanOrEqual(2);
@@ -122,5 +124,39 @@ describe('GalleryView bulk ZIP export', () => {
     const zip = await JSZip.loadAsync(capturedBlobs[0]);
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(['Aria.png', 'Aria_2.png']);
+
+    const pngBytes = await zip.files['Aria.png'].async('uint8array');
+    const keywords = extractChunks(pngBytes)
+      .filter((c: { name: string }) => c.name === 'tEXt')
+      .map((c: { data: Uint8Array }) => pngChunkText.decode(c.data).keyword);
+    expect(keywords).toContain('ccv3');
+    expect(keywords).toContain('chara');
+  });
+
+  it('imports all cards from a multi-card ZIP archive instead of only the first', async () => {
+    await db.cards.clear();
+    await useCardStore.getState().loadCardsFromDb();
+
+    const zip = new JSZip();
+    const cardA = createNewDefaultCard('Alpha');
+    const cardB = createNewDefaultCard('Bravo');
+    zip.file('Alpha.json', JSON.stringify(cardA));
+    zip.file('Bravo.json', JSON.stringify(cardB));
+    const zipBytes = await zip.generateAsync({ type: 'uint8array' });
+    const zipFile = new File([zipBytes], 'bundle.zip', { type: 'application/zip' });
+
+    const { container } = render(<GalleryView />);
+    const inputs = container.querySelectorAll('input[type="file"]');
+    expect(inputs.length).toBeGreaterThan(0);
+
+    fireEvent.change(inputs[0], { target: { files: [zipFile] } });
+
+    await waitFor(
+      async () => {
+        const stored = await db.cards.toArray();
+        expect(stored.map((c) => c.name).sort()).toEqual(['Alpha', 'Bravo']);
+      },
+      { timeout: 10000 },
+    );
   });
 });

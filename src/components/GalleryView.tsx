@@ -442,6 +442,7 @@ export const GalleryView: React.FC = () => {
       const bytes = await exportCardData(cardRecord.cardData, format, {
         ...(basePng ? { basePng } : {}),
         embeddedAssets: cardRecord.embeddedAssets,
+        backfillV2: true,
       });
       const ext = format === 'charx' ? 'charx' : format === 'json' ? 'json' : 'png';
       const filename = uniqueZipFileName(cardRecord.name, ext, usedNames);
@@ -491,7 +492,8 @@ export const GalleryView: React.FC = () => {
         const bytes = await exportCardData(cardRecord.cardData, format, {
           ...(basePng ? { basePng } : {}),
           embeddedAssets: cardRecord.embeddedAssets,
-        });
+          backfillV2: true,
+      });
         const ext = format === 'charx' ? 'charx' : format === 'json' ? 'json' : 'png';
         const filename = uniqueZipFileName(cardRecord.name, ext, usedNames);
         zip.file(filename, bytes);
