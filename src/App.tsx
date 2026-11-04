@@ -15,6 +15,7 @@ import { WORKSPACE_TABS, LAB_TABS } from './constants/navigation';
 import { usePWAUpdate } from './hooks/usePWAUpdate';
 import { useHashRouting } from './routing/useHashRouting';
 import { useModalA11y } from './hooks/useModalA11y';
+import { seedStarterPersonas } from './utils/seedStarterPersonas';
 
 const GalleryView = lazy(() => import('./components/GalleryView').then(module => ({ default: module.GalleryView })));
 const EditorView = lazy(() => import('./components/EditorView').then(module => ({ default: module.EditorView })));
@@ -45,7 +46,11 @@ export default function App() {
 
   useEffect(() => {
     loadThemeFromDb();
-    loadCardsFromDb();
+    // Seed the starter personas into a fresh database first, so the
+    // Library never opens on an empty screen; failures are logged only.
+    seedStarterPersonas()
+      .catch((err) => console.error('Failed to seed starter personas:', err))
+      .finally(() => loadCardsFromDb());
     loadProfilesFromDb();
     checkPassphraseSetup();
     loadAssistantChatsFromDb();

@@ -24,6 +24,8 @@ OUT = os.environ.get("RF_OUT", "/tmp/rf-smoke")
 CHROME = os.environ.get("RF_CHROME")  # optional executable_path
 NAME = "Smoke Test Card"
 DESC = "A small card made by the smoke test."
+# Starter personas seeded into a fresh database on first load (Task 062).
+STARTER_NAMES = ["Customer Support Triage", "SQL Data Analyst", "Strict Code Reviewer"]
 os.makedirs(OUT, exist_ok=True)
 
 CARD = {
@@ -175,6 +177,13 @@ async def main():
             return await screen_ok(pg)
         await run_check(pg, "app loads", app_loads)
 
+        async def starter_personas():
+            # A fresh browser opens on the three seeded personas, never empty.
+            for name in STARTER_NAMES:
+                await pg.get_by_text(name, exact=True).first.wait_for(state="visible", timeout=10000)
+            return "pass"
+        await run_check(pg, "starter personas", starter_personas)
+
         async def do_import():
             await import_card(pg, card_path)
             return "pass"
@@ -300,7 +309,9 @@ async def main():
             await rp.goto(URL)
             await rp.wait_for_timeout(1200)
             await rp.get_by_role("button", name="Library", exact=True).first.wait_for(state="visible", timeout=10000)
-            await rp.get_by_text("No Character Cards Yet", exact=True).wait_for(state="visible", timeout=10000)
+            # A fresh context is seeded with the three starter personas, not empty.
+            for name in STARTER_NAMES:
+                await rp.get_by_text(name, exact=True).first.wait_for(state="visible", timeout=10000)
             await rp.get_by_role("button", name="Settings", exact=True).first.click()
             await settle(rp)
             await rp.get_by_label("Restore Database (JSON / ZIP)").set_input_files(backup_path["path"])
