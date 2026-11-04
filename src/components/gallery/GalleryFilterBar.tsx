@@ -6,16 +6,12 @@ export interface GalleryFilterBarProps {
   allTags: string[];
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
-  selectedRatingFilter: 'all' | 'sfw' | 'nsfw' | 'unrated';
-  setSelectedRatingFilter: (rating: 'all' | 'sfw' | 'nsfw' | 'unrated') => void;
 }
 
 export const GalleryFilterBar: React.FC<GalleryFilterBarProps> = ({
   allTags,
   selectedTag,
   setSelectedTag,
-  selectedRatingFilter,
-  setSelectedRatingFilter,
 }) => {
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const [tagQuery, setTagQuery] = useState('');
@@ -50,13 +46,6 @@ export const GalleryFilterBar: React.FC<GalleryFilterBarProps> = ({
     };
   }, [isTagPickerOpen]);
 
-  const ratingOptions: { value: 'all' | 'sfw' | 'nsfw' | 'unrated'; label: string; selectedClass: string }[] = [
-    { value: 'all', label: 'All Ratings', selectedClass: 'bg-knight-700 text-mist-100 border-transparent' },
-    { value: 'sfw', label: 'SFW', selectedClass: 'bg-emerald-950 text-emerald-300 border-emerald-800/80' },
-    { value: 'nsfw', label: 'NSFW', selectedClass: 'bg-rose-950 text-rose-300 border-rose-800/80' },
-    { value: 'unrated', label: 'Unrated', selectedClass: 'bg-amber-950 text-amber-300 border-amber-800/80' },
-  ];
-  const targetClass = 'min-h-11 px-3 py-2 rounded-full border text-xs font-semibold transition-colors shrink-0 touch-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-maroon-400';
   const visibleTags = allTags.filter((tag) => tag.toLowerCase().includes(tagQuery.trim().toLowerCase()));
 
   const selectTag = (tag: string | null) => {
@@ -66,25 +55,7 @@ export const GalleryFilterBar: React.FC<GalleryFilterBarProps> = ({
   };
 
   return (
-    <div className="w-full min-w-0 flex flex-wrap items-center justify-between gap-3">
-      <div role="group" aria-label="Rating filter" className="flex flex-wrap items-center gap-1 bg-void-900 border border-knight-800 rounded-full p-1 max-w-full">
-        {ratingOptions.map((option) => {
-          const selected = selectedRatingFilter === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              data-testid={`filter-rating-${option.value}`}
-              aria-pressed={selected}
-              onClick={() => setSelectedRatingFilter(option.value)}
-              className={`${targetClass} ${selected ? option.selectedClass : 'text-knight-400 hover:text-mist-200 border-transparent'}`}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-
+    <div className="w-full min-w-0 flex flex-wrap items-center gap-3">
       {allTags.length > 0 && (
         <div className="relative shrink-0" ref={pickerRef}>
           <button

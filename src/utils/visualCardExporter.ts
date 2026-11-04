@@ -293,32 +293,16 @@ export async function renderVisualCardCanvasBytes({
 
       if (tagX + tagW > width - 48) break;
 
-      const isNsfw = /nsfw|18\+|adult|explicit|uncensored|erotica|rating:nsfw/i.test(tags[i]);
+      ctx.fillStyle = 'rgba(88, 28, 62, 0.5)';
+      drawRoundRect(ctx, tagX, currentY - 14, tagW, 22, 11);
+      ctx.fill();
 
-      if (isNsfw) {
-        // Distinct amber/red style for NSFW / content rating tags
-        ctx.fillStyle = 'rgba(153, 27, 27, 0.75)';
-        drawRoundRect(ctx, tagX, currentY - 14, tagW, 22, 11);
-        ctx.fill();
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-        ctx.strokeStyle = '#f87171'; // Distinct red/amber outline
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ctx.fillStyle = '#fca5a5';
-        ctx.fillText(tagLabel, tagX + 9, currentY + 1);
-      } else {
-        ctx.fillStyle = 'rgba(88, 28, 62, 0.5)';
-        drawRoundRect(ctx, tagX, currentY - 14, tagW, 22, 11);
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#f472b6';
-        ctx.fillText(tagLabel, tagX + 9, currentY + 1);
-      }
+      ctx.fillStyle = '#f472b6';
+      ctx.fillText(tagLabel, tagX + 9, currentY + 1);
 
       tagX += tagW + 8;
     }

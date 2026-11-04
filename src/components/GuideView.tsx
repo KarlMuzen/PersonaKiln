@@ -613,14 +613,14 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             </p>
           </div>
 
-          {/* Subsection 3: Age-Appropriate Use */}
+          {/* Subsection 3: Responsible Use */}
           <div className="bg-void-900 border border-knight-700/40 rounded-2xl p-5 md:p-6 space-y-3 shadow-sm">
             <h2 className="text-sm font-bold text-mist-100 uppercase tracking-wider text-maroon-400 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4" />
-              Age-Appropriate Use
+              Responsible Use
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              The NSFW toggle and tag filters in the Gallery are self-reported heuristic indicators, not an enforced content filter or age gate. Users are responsible for ensuring their usage aligns with their age, local jurisdiction laws, and the terms of their connected AI providers.
+              Tag filters are plain labels from the card, not a content filter or age gate. You are responsible for following local law and your AI provider's terms.
             </p>
           </div>
 
