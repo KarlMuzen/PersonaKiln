@@ -64,7 +64,7 @@ describe('Library mobile controls', () => {
     expect(exportMenu.className).toContain('max-h-[min(70vh,32rem)]');
   });
 
-  it('uses labelled filter groups and minimum touch-height controls', async () => {
+  it('uses labelled tag filter and minimum touch-height controls, with no rating buttons', async () => {
     const card = createNewDefaultCard('Tagged Test Character');
     await db.cards.add({
       uuid: 'tagged-test-character',
@@ -79,11 +79,8 @@ describe('Library mobile controls', () => {
 
     render(<GalleryView />);
 
-    expect(screen.getByRole('group', { name: 'Rating filter' })).toBeInTheDocument();
-
     for (const name of ['All Ratings', 'SFW', 'NSFW', 'Unrated']) {
-      const button = screen.getByRole('button', { name });
-      expect(button.className).toContain('min-h-11');
+      expect(screen.queryByRole('button', { name })).toBeNull();
     }
 
     const tagsButton = screen.getByRole('button', { name: 'Tags' });

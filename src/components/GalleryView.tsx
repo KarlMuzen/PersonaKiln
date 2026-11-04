@@ -26,9 +26,9 @@ import { GalleryFilterBar } from './gallery/GalleryFilterBar';
 import { GalleryCardsGrid } from './gallery/GalleryCardsGrid';
 import { PasteImportModal } from './gallery/PasteImportModal';
 import type { CharacterCardV3 } from '../schemas/cardSchema';
-import { getCardCoverUrl, getCardRating, type DuplicateChoice } from './gallery/galleryUtils';
+import { getCardCoverUrl, type DuplicateChoice } from './gallery/galleryUtils';
 
-export { getCardCoverUrl, getCardRating };
+export { getCardCoverUrl };
 
 export const GalleryView: React.FC = () => {
   const {
@@ -71,9 +71,6 @@ export const GalleryView: React.FC = () => {
   const [chubUrlInput, setChubUrlInput] = useState('');
   const [isChubImporting, setIsChubImporting] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
-
-  // Rating filter state
-  const [selectedRatingFilter, setSelectedRatingFilter] = useState<'all' | 'sfw' | 'nsfw' | 'unrated'>('all');
 
   // Import duplicate-detection modal state
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
@@ -208,7 +205,7 @@ export const GalleryView: React.FC = () => {
   // Unique tags across all cards
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags || [])));
 
-  // Filter cards by search query, tag, and rating
+  // Filter cards by search query and tag
   const filteredCards = cards.filter((card) => {
     const matchesSearch =
       !searchQuery ||
@@ -218,17 +215,7 @@ export const GalleryView: React.FC = () => {
 
     const matchesTag = !selectedTag || card.tags.includes(selectedTag);
 
-    const rating = getCardRating(card);
-    const matchesRating =
-      selectedRatingFilter === 'all'
-        ? true
-        : selectedRatingFilter === 'sfw'
-        ? rating === 'sfw'
-        : selectedRatingFilter === 'nsfw'
-        ? rating === 'nsfw'
-        : rating === 'unrated';
-
-    return matchesSearch && matchesTag && matchesRating;
+    return matchesSearch && matchesTag;
   });
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -608,13 +595,11 @@ export const GalleryView: React.FC = () => {
         handleChubImport={handleChubImport}
       />
 
-      {/* Tag & Rating Filter Bar */}
+      {/* Tag Filter Bar */}
       <GalleryFilterBar
         allTags={allTags}
         selectedTag={selectedTag}
         setSelectedTag={setSelectedTag}
-        selectedRatingFilter={selectedRatingFilter}
-        setSelectedRatingFilter={setSelectedRatingFilter}
       />
 
       {/* Cards Grid & Bulk Actions */}
@@ -635,11 +620,10 @@ export const GalleryView: React.FC = () => {
         fileInputRef={fileInputRef}
         createNewCard={createNewCard}
         setActiveTab={setActiveTab}
-        hasActiveFilters={Boolean(searchQuery.trim() || selectedTag || selectedRatingFilter !== 'all')}
+        hasActiveFilters={Boolean(searchQuery.trim() || selectedTag)}
         onClearFilters={() => {
           setSearchQuery('');
           setSelectedTag(null);
-          setSelectedRatingFilter('all');
         }}
       />
     </div>
