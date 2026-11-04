@@ -441,7 +441,7 @@ export const GalleryView: React.FC = () => {
     const url = URL.createObjectURL(zipContent);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `roleplay_forge_cards_all_${Date.now()}.zip`;
+    a.download = `personakiln_cards_all_${Date.now()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -492,7 +492,7 @@ export const GalleryView: React.FC = () => {
     const url = URL.createObjectURL(zipContent);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `roleplay_forge_cards_export_${Date.now()}.zip`;
+    a.download = `personakiln_cards_export_${Date.now()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -518,7 +518,7 @@ export const GalleryView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `roleplay_forge_cards_bundle_${Date.now()}.json`;
+    a.download = `personakiln_cards_bundle_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
 

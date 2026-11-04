@@ -1,7 +1,7 @@
 /**
  * Pure WebAuthn PRF (Pseudo-Random Function) Passkey Crypto Utilities.
  *
- * Designed as a fast local unlock alternative for Roleplay Forge.
+ * Designed as a fast local unlock alternative for PersonaKiln.
  * The master passphrase remains the sole root of trust.
  * Passkey enrollment wraps the in-memory master key with a key derived from
  * WebAuthn PRF output via HKDF-SHA256.
@@ -10,7 +10,7 @@
 import { buf2b64, b642buf, buf2hex, hex2buf } from './binaryEncoding';
 
 // Internal hand-off value used only between the setup dialog and the profile-save flow.
-export const PASSKEY_ONLY_SETUP_SENTINEL = '__ROLEPLAY_FORGE_PASSKEY_ONLY_SETUP__';
+export const PASSKEY_ONLY_SETUP_SENTINEL = '__PERSONAKILN_PASSKEY_ONLY_SETUP__';
 
 export { buf2b64, b642buf, buf2hex, hex2buf };
 
@@ -57,6 +57,7 @@ async function deriveWrappingKeyFromPrf(prfOutput: BufferSource | ArrayBuffer | 
       name: 'HKDF',
       hash: 'SHA-256',
       salt: new Uint8Array(0), // empty salt
+      // FROZEN: 'RoleplayForge-Passkey-Wrap-v1' must stay exactly — changing it would make existing passkey-wrapped keys undecryptable.
       info: enc.encode('RoleplayForge-Passkey-Wrap-v1'),
     },
     hkdfBaseKey,
@@ -83,13 +84,13 @@ export async function enrollPasskey(
       publicKey: {
         challenge,
         rp: {
-          name: 'Roleplay Forge',
+          name: 'PersonaKiln',
           id: typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : undefined,
         },
         user: {
           id: userId,
-          name: 'roleplayforge_user',
-          displayName: 'Roleplay Forge User',
+          name: 'personakiln_user',
+          displayName: 'PersonaKiln User',
         },
         pubKeyCredParams: [
           { alg: -7, type: 'public-key' }, // ES256

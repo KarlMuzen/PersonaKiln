@@ -254,7 +254,7 @@ export async function sendSingleLLMRequest(
 
     if (profile.provider === 'openrouter') {
       headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      headers['X-Title'] = 'Roleplay Forge';
+      headers['X-Title'] = 'PersonaKiln';
     }
 
     const formattedMessages: LLMMessage[] = [];

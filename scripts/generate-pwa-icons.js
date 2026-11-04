@@ -31,7 +31,7 @@ async function generateIcon(size, filename, source = sourceLogo) {
 }
 
 async function generateIcons() {
-  console.log('Generating Roleplay Forge icons from:', sourceLogo);
+  console.log('Generating PersonaKiln icons from:', sourceLogo);
   await generateIcon(192, 'pwa-192x192.png');
   await generateIcon(512, 'pwa-512x512.png');
   await generateIcon(192, 'pwa-maskable-192x192.png', sourceMaskable);
@@ -39,7 +39,7 @@ async function generateIcons() {
   await generateIcon(180, 'apple-touch-icon.png', sourceMaskable);
   await generateIcon(64, 'favicon.png');
   await generateIcon(512, 'brand_logo.png');
-  console.log('All Roleplay Forge icons generated successfully!');
+  console.log('All PersonaKiln icons generated successfully!');
 }
 
 generateIcons().catch((err) => {

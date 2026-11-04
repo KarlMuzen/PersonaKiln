@@ -18,7 +18,7 @@ export const createUISlice: StateCreator<CardStore, [], [], UISlice> = (set) => 
         document.documentElement.classList.remove('dark');
       }
       try {
-        window.localStorage.setItem('roleplay-forge-theme', theme);
+        window.localStorage.setItem('personakiln-theme', theme);
       } catch {
         // The IndexedDB preference remains authoritative when storage is unavailable.
       }
@@ -36,7 +36,7 @@ export const createUISlice: StateCreator<CardStore, [], [], UISlice> = (set) => 
       document.documentElement.classList.remove('dark');
     }
     try {
-      window.localStorage.setItem('roleplay-forge-theme', theme);
+      window.localStorage.setItem('personakiln-theme', theme);
     } catch {
       // Theme still applies in-session; IndexedDB remains the persistent source.
     }

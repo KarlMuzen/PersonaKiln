@@ -126,7 +126,7 @@ export const AssistantView: React.FC = () => {
         }
       : null;
 
-    return `You are an expert AI Roleplay Forge Assistant adhering strictly to the Character Card V3 specification.
+    return `You are an expert AI PersonaKiln Assistant adhering strictly to the Character Card V3 specification.
 You have full real-time access to the user's active application surface metadata.
 
 === LIVE APP SURFACE METADATA ===

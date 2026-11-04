@@ -72,7 +72,7 @@ export const PwaSection: React.FC<PwaSectionProps> = ({
         <h3 className="text-sm font-semibold text-mist-100 flex items-center gap-2">
           <img
             src="/forge-mark.svg"
-            alt="Roleplay Forge logo"
+            alt="PersonaKiln logo"
             className="w-5 h-5 rounded-md object-cover border border-maroon-500/40"
             referrerPolicy="no-referrer"
           />
@@ -92,7 +92,7 @@ export const PwaSection: React.FC<PwaSectionProps> = ({
       </div>
 
       <p className="text-xs text-knight-400 leading-relaxed">
-        Roleplay Forge can be installed directly onto your desktop, Android, or iOS device for full offline access, standalone window mode, and faster load times without requiring an app store download.
+        PersonaKiln can be installed directly onto your desktop, Android, or iOS device for full offline access, standalone window mode, and faster load times without requiring an app store download.
       </p>
 
       {isInstallable && (
@@ -102,7 +102,7 @@ export const PwaSection: React.FC<PwaSectionProps> = ({
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-maroon-600 to-maroon-800 hover:from-maroon-500 hover:to-maroon-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-maroon-950 transition-all active:scale-95"
           >
             <DownloadCloud className="w-4 h-4" />
-            Install Roleplay Forge
+            Install PersonaKiln
           </button>
         </div>
       )}

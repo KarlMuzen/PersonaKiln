@@ -49,7 +49,7 @@ const SAMPLE_CARDS: { title: string; subtitle: string; tag: string; card: Charac
         extensions: {},
         group_only_greetings: [],
         tags: ['fantasy', 'elf', 'mage', 'runesmith'],
-        creator: 'Roleplay Forge Studio',
+        creator: 'PersonaKiln Studio',
         creation_date: Math.floor(Date.now() / 1000),
         modification_date: Math.floor(Date.now() / 1000),
         character_book: {
@@ -102,7 +102,7 @@ const SAMPLE_CARDS: { title: string; subtitle: string; tag: string; card: Charac
         extensions: {},
         group_only_greetings: [],
         tags: ['dwarf', 'warrior', 'tactician', 'rpg'],
-        creator: 'Roleplay Forge Studio',
+        creator: 'PersonaKiln Studio',
         creation_date: Math.floor(Date.now() / 1000),
         modification_date: Math.floor(Date.now() / 1000),
         character_book: {
@@ -144,7 +144,7 @@ const SAMPLE_CARDS: { title: string; subtitle: string; tag: string; card: Charac
         extensions: {},
         group_only_greetings: [],
         tags: ['cyberpunk', 'netrunner', 'sci-fi', 'hacker'],
-        creator: 'Roleplay Forge Studio',
+        creator: 'PersonaKiln Studio',
         creation_date: Math.floor(Date.now() / 1000),
         modification_date: Math.floor(Date.now() / 1000),
       },
@@ -197,7 +197,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
         <div className="relative z-10 space-y-3">
           <div className="inline-flex max-w-full items-center justify-center gap-2 px-3 py-2 bg-maroon-950/80 border border-maroon-800/80 rounded-full text-maroon-300 text-xs font-medium">
             <GraduationCap className="w-4 h-4 text-maroon-400" />
-            <span>Roleplay Forge Field Guide & Reference</span>
+            <span>PersonaKiln Field Guide & Reference</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-mist-100">
             Master Character Card Creation & Testing
@@ -432,7 +432,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               Chub.ai Direct Card Import
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              In the <strong>Gallery View</strong>, click <strong>Import from Chub</strong> and paste any Chub character URL or character ID/path (e.g. <code className="text-amber-300 font-mono">username/cardname</code> or <code className="text-amber-300 font-mono">12345</code>). Roleplay Forge directly fetches the card definition or avatar PNG from Chub.ai and imports it into your local gallery.
+              In the <strong>Gallery View</strong>, click <strong>Import from Chub</strong> and paste any Chub character URL or character ID/path (e.g. <code className="text-amber-300 font-mono">username/cardname</code> or <code className="text-amber-300 font-mono">12345</code>). PersonaKiln directly fetches the card definition or avatar PNG from Chub.ai and imports it into your local gallery.
             </p>
           </div>
 
@@ -442,7 +442,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               Export Round-Trip Verification
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              After exporting a card as PNG or CHARX, click the animated <strong>Verify Export</strong> button in the Editor header. Roleplay Forge immediately re-imports the exported binary file and performs a deep field-by-field diff (checking text fields, tags, lorebooks, extensions, and asset payloads) against your live card to check the export matches.
+              After exporting a card as PNG or CHARX, click the animated <strong>Verify Export</strong> button in the Editor header. PersonaKiln immediately re-imports the exported binary file and performs a deep field-by-field diff (checking text fields, tags, lorebooks, extensions, and asset payloads) against your live card to check the export matches.
             </p>
           </div>
 
@@ -462,7 +462,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               Token Usage & Cost Tracking
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              In <strong>Settings</strong>, Roleplay Forge maintains a live per-model session token ledger (input + output tokens) and estimates running API costs using industry standard rate tables. Click "Reset Counter" anytime to start a fresh tracking session.
+              In <strong>Settings</strong>, PersonaKiln maintains a live per-model session token ledger (input + output tokens) and estimates running API costs using industry standard rate tables. Click "Reset Counter" anytime to start a fresh tracking session.
             </p>
           </div>
 
@@ -503,7 +503,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                 <tr className="border-b border-knight-700/40 text-knight-400">
                   <th className="py-2.5 px-3">Feature Field</th>
                   <th className="py-2.5 px-3">CCv2 (Legacy Standard)</th>
-                  <th className="py-2.5 px-3 text-maroon-400 font-semibold">CCv3 (Modern Roleplay Forge Standard)</th>
+                  <th className="py-2.5 px-3 text-maroon-400 font-semibold">CCv3 (Modern PersonaKiln Standard)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-knight-300">
@@ -558,7 +558,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             CBS Macro Reference Sheet
           </h2>
           <p className="text-xs text-knight-400">
-            Roleplay Forge automatically parses these standardized prompt macros at runtime during chats and test runs:
+            PersonaKiln automatically parses these standardized prompt macros at runtime during chats and test runs:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
@@ -609,7 +609,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               Content Responsibility & Provider Terms
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              Roleplay Forge sends API requests directly from your browser to your configured LLM provider (Google Gemini, OpenAI, Anthropic, OpenRouter, or Ollama). All generated content is subject to your selected provider's acceptable use policies and terms of service. You are responsible for understanding and adhering to those policies; policy violations risk your API credentials being flagged, rate-limited, or terminated by the provider.
+              PersonaKiln sends API requests directly from your browser to your configured LLM provider (Google Gemini, OpenAI, Anthropic, OpenRouter, or Ollama). All generated content is subject to your selected provider's acceptable use policies and terms of service. You are responsible for understanding and adhering to those policies; policy violations risk your API credentials being flagged, rate-limited, or terminated by the provider.
             </p>
           </div>
 
@@ -653,7 +653,7 @@ export const GuideView: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               No Formal Security Audit
             </h2>
             <p className="text-xs text-knight-400 leading-relaxed">
-              Roleplay Forge is an independent open-source project and has not undergone a formal third-party security audit. Cryptographic routines use standard WebCrypto primitives (AES-256-GCM, PBKDF2 with 600,000 iterations), but users should scope their trust accordingly.
+              PersonaKiln is an independent open-source project and has not undergone a formal third-party security audit. Cryptographic routines use standard WebCrypto primitives (AES-256-GCM, PBKDF2 with 600,000 iterations), but users should scope their trust accordingly.
             </p>
           </div>
         </div>

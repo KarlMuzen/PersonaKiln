@@ -35,7 +35,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Roleplay Forge Component Error:', error, errorInfo);
+    console.error('PersonaKiln Component Error:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   private buildReportText = (): string => {
     const { error, errorInfo } = this.state;
     const lines = [
-      `Roleplay Forge crash report`,
+      `PersonaKiln crash report`,
       getBuildLabel(),
       `Section: ${this.props.fallbackTitle || 'unknown'}`,
       `Time: ${new Date().toISOString()}`,

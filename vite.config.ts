@@ -58,8 +58,8 @@ export default defineConfig(() => {
           ]
         },
         manifest: {
-          name: 'Roleplay Forge',
-          short_name: 'Forge',
+          name: 'PersonaKiln',
+          short_name: 'PersonaKiln',
           description: 'The AI roleplay workbench',
           theme_color: '#191816',
           background_color: '#22211E',

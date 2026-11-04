@@ -335,14 +335,14 @@ export const CrucibleView: React.FC = () => {
       targetBudget: budget,
     } = trustReportData;
 
-    const reportText = `🔥 **Roleplay Forge Report** 🛡️
+    const reportText = `🔥 **PersonaKiln Report** 🛡️
 **Character:** ${characterName}
 **Leak checks passed:** ${pPassed}/${pTested} (keyword check)
 **AI-disclaimer scan:** ${driftString}
 **Tested On:** ${modelString}
 **Token Efficiency:** ${cardTokens} / ${budget}
 
-*Generated via Roleplay Forge Studio*`;
+*Generated via PersonaKiln Studio*`;
 
     navigator.clipboard.writeText(reportText);
     setCopiedReport(true);
