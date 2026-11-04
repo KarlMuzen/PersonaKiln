@@ -68,7 +68,7 @@ describe('GalleryView component', () => {
 
   it('has no rating buttons and filters by tag picker', async () => {
     const sfwCard = createMockCard('sfw-1', 'SFW Hero', ['sfw']);
-    const nsfwCard = createMockCard('nsfw-1', 'Dark Villian', ['Mature Themes']);
+    const nsfwCard = createMockCard('restricted-1', 'Dark Villain', ['Mature Themes']);
     const unratedCard = createMockCard('unrated-1', 'Mystery Wanderer', []);
 
     await db.cards.bulkAdd([sfwCard, nsfwCard, unratedCard]);
@@ -78,7 +78,7 @@ describe('GalleryView component', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('SFW Hero').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Dark Villian').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Dark Villain').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Mystery Wanderer').length).toBeGreaterThanOrEqual(1);
     });
 
@@ -94,7 +94,7 @@ describe('GalleryView component', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('SFW Hero').length).toBeGreaterThanOrEqual(1);
-      expect(screen.queryByText('Dark Villian')).toBeNull();
+      expect(screen.queryByText('Dark Villain')).toBeNull();
       expect(screen.queryByText('Mystery Wanderer')).toBeNull();
     });
   });

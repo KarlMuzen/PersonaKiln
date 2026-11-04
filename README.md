@@ -1,10 +1,10 @@
-# Roleplay Forge — Local-First AI Roleplay Workbench (Character Card V2/V3, CHARX & Lorebook Editor)
+# PersonaKiln — Local-First AI Roleplay Workbench (Character Card V2/V3, CHARX & Lorebook Editor)
 
-**Live App (PWA):** [roleplayforge.vercel.app](https://roleplayforge.vercel.app) · **Source:** [github.com/KarlMuzen/RoleplayForge](https://github.com/KarlMuzen/RoleplayForge) · **Docs:** [Project State](PROJECT_STATE.md) | [Platform Support](docs/PLATFORM_SUPPORT.md) | [Roadmap](docs/ROADMAP.md)
+**Live App (PWA):** [roleplayforge.vercel.app](https://roleplayforge.vercel.app) · **Source:** [github.com/shashibuilds/PersonaKiln](https://github.com/shashibuilds/PersonaKiln) · **Docs:** [Platform Support](docs/PLATFORM_SUPPORT.md) | [Roadmap](docs/ROADMAP.md)
 
-**Roleplay Forge** is a local-first browser workbench for authoring, organizing, converting, and testing AI roleplay assets. The aim is to give creators a reliable place to manage **Character Cards (V2/V3, PNG, JSON, CHARX)**, **lorebooks**, **generation presets**, and **repeatable LLM evaluations** without overstating cross-platform compatibility.
+**PersonaKiln** is a local-first browser workbench for authoring, organizing, converting, and testing AI roleplay assets. The aim is to give creators a reliable place to manage **Character Cards (V2/V3, PNG, JSON, CHARX)**, **lorebooks**, **generation presets**, and **repeatable LLM evaluations** without overstating cross-platform compatibility.
 
-> **Repository state (2026-11-03 — v1.0.0):** Production deploys from `main` to [roleplayforge.vercel.app](https://roleplayforge.vercel.app) as an installable Progressive Web App (PWA). Includes a phone-first Library and Details layout, a context bar (undo, redo, save status), paste-to-card import, a chat test bench for cards (with alternate greeting and group preview support), multi-card ZIP import/export, backup export that can leave API keys out, and an install prompt. Move data between devices with a backup file. CI verifies lint/type checking, 62 test suites, and a production PWA build (see [Project state](PROJECT_STATE.md) and [known bugs](docs/BUGS.md)).
+> **Repository state (2026-11-03 — v1.0.0):** Production deploys from `main` to [roleplayforge.vercel.app](https://roleplayforge.vercel.app) as an installable Progressive Web App (PWA). Includes a phone-first Library and Details layout, a context bar (undo, redo, save status), paste-to-card import, a chat test bench for cards (with alternate greeting and group preview support), multi-card ZIP import/export, backup export that can leave API keys out, and an install prompt. Move data between devices with a backup file. CI verifies lint/type checking, 62 test suites, and a production PWA build.
 
 ---
 
@@ -72,8 +72,6 @@ Cards and lorebooks are stored in browser IndexedDB (`RoleplayForgeDB`). The opt
 - [Roadmap](docs/ROADMAP.md): phased delivery and completion criteria.
 - [Platform and format support](docs/PLATFORM_SUPPORT.md): implemented paths versus verified compatibility.
 - [Testing strategy](docs/TESTING_STRATEGY.md): required checks, integrity tests, and release smoke tests.
-- [Project state](PROJECT_STATE.md): current task, decisions, and known risks (start here for any AI or human).
-- [Known bugs](docs/BUGS.md): tracked issues and manual verification items.
 
 ---
 
@@ -89,7 +87,7 @@ npm test
 npm run build
 ```
 
-The Vite development server normally uses port `3000`. The current CI workflow runs dependency installation, lint/type checking, automated tests, and `npm run build` (which regenerates PWA icons from `public/forge-mark.svg`). A green CI run verifies the production bundle for that commit, but it does not replace the installed-PWA smoke test on Android. `scripts/smoke.py` (Python Playwright, run by hand against `vite preview`; usage is in its docstring) is a manual browser smoke test and is not part of CI.
+The Vite development server normally uses port `3000`. The current CI workflow runs dependency installation, lint/type checking, automated tests, and `npm run build` (PWA icons are generated separately with `npm run generate:icons`). A green CI run verifies the production bundle for that commit, but it does not replace the installed-PWA smoke test on Android. `scripts/smoke.py` (Python Playwright, run by hand against `vite preview`; usage is in its docstring) is a manual browser smoke test and is not part of CI.
 
 ---
 
@@ -107,4 +105,4 @@ The Vite development server normally uses port `3000`. The current CI workflow r
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for the original CardCrucible license and attribution. Retain that attribution through the transition to Roleplay Forge.
+MIT. See [LICENSE](LICENSE) for the original CardCrucible license and attribution. Retain that attribution through the transition to PersonaKiln.
