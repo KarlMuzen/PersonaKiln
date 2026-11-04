@@ -55,12 +55,12 @@ describe('PwaSection maintenance buttons', () => {
       />,
     );
     expect(
-      screen.getByRole('button', { name: 'Install Roleplay Forge' }),
+      screen.getByRole('button', { name: 'Install PersonaKiln' }),
     ).toBeInTheDocument();
     unmount();
     renderSection(false);
     expect(
-      screen.queryByRole('button', { name: 'Install Roleplay Forge' }),
+      screen.queryByRole('button', { name: 'Install PersonaKiln' }),
     ).toBeNull();
   });
 

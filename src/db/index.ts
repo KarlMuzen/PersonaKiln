@@ -139,13 +139,14 @@ export function stripRemovedProfileFields<T extends object>(prof: T): T {
   return copy;
 }
 
-export class RoleplayForgeDatabase extends Dexie {
+export class PersonaKilnDatabase extends Dexie {
   cards!: Table<StoredCard, number>;
   lorebooks!: Table<StoredLorebook, number>;
   connectionProfiles!: Table<ConnectionProfile, number>;
   settings!: Table<AppSetting, string>;
 
   constructor() {
+    // FROZEN: 'RoleplayForgeDB' must stay exactly — renaming it would orphan every existing IndexedDB database.
     super('RoleplayForgeDB');
 
     this.version(1).stores({
@@ -304,4 +305,4 @@ export class RoleplayForgeDatabase extends Dexie {
   }
 }
 
-export const db = new RoleplayForgeDatabase();
+export const db = new PersonaKilnDatabase();

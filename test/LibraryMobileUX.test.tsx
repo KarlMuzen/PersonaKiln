@@ -108,7 +108,7 @@ describe('Guide modal header', () => {
     const close = screen.getByRole('button', { name: 'Close Guide' });
     expect(close.className).toContain('min-h-11');
     expect(close.parentElement?.className).toContain('sticky');
-    expect(screen.getByText('Roleplay Forge Field Guide & Reference')).toBeInTheDocument();
+    expect(screen.getByText('PersonaKiln Field Guide & Reference')).toBeInTheDocument();
 
     fireEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);

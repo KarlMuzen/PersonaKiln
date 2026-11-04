@@ -91,7 +91,7 @@ export const PortraitGuard: React.FC = () => {
             Portrait Mode Required
           </h2>
           <p className="text-xs text-knight-300 leading-relaxed max-w-sm">
-            Roleplay Forge studio controls are optimized for portrait orientation. Please rotate your device back to upright portrait mode.
+            PersonaKiln studio controls are optimized for portrait orientation. Please rotate your device back to upright portrait mode.
           </p>
         </div>
 

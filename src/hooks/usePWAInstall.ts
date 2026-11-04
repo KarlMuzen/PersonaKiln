@@ -6,7 +6,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-const WELCOME_FLAG = 'roleplay-forge-installed-welcome';
+const WELCOME_FLAG = 'personakiln-installed-welcome';
 
 function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
@@ -26,7 +26,7 @@ export function announceInstalled(): void {
   if (installedToastShown) return;
   installedToastShown = true;
   useToastStore.getState().showToast({
-    title: 'Roleplay Forge installed',
+    title: 'PersonaKiln installed',
     message: 'Open it from your home screen or app drawer. Your library works offline.',
     type: 'success',
     duration: 6000,
@@ -45,7 +45,7 @@ export function announceFirstStandaloneLaunch(): void {
     return; // storage blocked: skip rather than toast on every launch
   }
   useToastStore.getState().showToast({
-    title: 'Roleplay Forge is installed',
+    title: 'PersonaKiln is installed',
     message: 'Your library and settings stay on this device and work offline.',
     type: 'success',
     duration: 6000,

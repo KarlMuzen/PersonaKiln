@@ -96,7 +96,7 @@ describe('persisted format invariants', () => {
   it('keeps theme, editor-history, assistant-chat, and cost-tracker identifiers stable', async () => {
     await useCardStore.getState().setTheme('light');
     expect(await db.settings.get('app_theme')).toEqual({ key: 'app_theme', value: 'light' });
-    expect(localStorage.getItem('roleplay-forge-theme')).toBe('light');
+    expect(localStorage.getItem('personakiln-theme')).toBe('light');
 
     const cardData = createNewDefaultCard('Invariant fixture');
     const historyKey = 'editor_history_invariant-fixture';

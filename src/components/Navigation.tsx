@@ -110,11 +110,11 @@ export const Navigation: React.FC = () => {
         <div className="p-4 border-b border-knight-700/40 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-void-800 p-0.5 border border-knight-700/50 overflow-hidden shrink-0">
-              <img src="/forge-mark.svg" alt="Roleplay Forge mark" className="w-full h-full object-cover rounded-[10px]" referrerPolicy="no-referrer" />
+              <img src="/forge-mark.svg" alt="PersonaKiln mark" className="w-full h-full object-cover rounded-[10px]" referrerPolicy="no-referrer" />
             </div>
             <div>
               <h1 className="font-display text-mist-100 tracking-tight text-sm flex items-center gap-1.5">
-                Roleplay Forge
+                PERSONAKILN
                 
               </h1>
               <p className="text-[10px] text-knight-400 tracking-wide">The AI roleplay workbench</p>
@@ -125,7 +125,7 @@ export const Navigation: React.FC = () => {
               <button
                 onClick={promptInstall}
                 className="p-2 rounded-xl bg-maroon-950/80 hover:bg-maroon-900 border border-maroon-800/60 text-maroon-300 transition-colors touch-fast active:scale-95"
-                title="Install Roleplay Forge App"
+                title="Install PersonaKiln App"
               >
                 <DownloadCloud className="w-4 h-4 text-maroon-400" />
               </button>
@@ -237,9 +237,9 @@ export const Navigation: React.FC = () => {
         <header className="md:hidden flex items-center justify-between px-4 py-2.5 bg-void-950/90 backdrop-blur-md border-b border-knight-700/20 text-mist-100 sticky top-0 z-30 pt-[max(0.625rem,env(safe-area-inset-top,0px))]">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-void-800 flex items-center justify-center text-maroon-400 font-bold text-xs shadow-inner border border-knight-700/40 overflow-hidden shrink-0">
-              <img src="/forge-mark.svg" alt="Roleplay Forge mark" className="w-full h-full object-cover rounded-md" referrerPolicy="no-referrer" />
+              <img src="/forge-mark.svg" alt="PersonaKiln mark" className="w-full h-full object-cover rounded-md" referrerPolicy="no-referrer" />
             </div>
-            <span className="font-semibold text-sm text-mist-100 tracking-tight">Roleplay <span className="text-maroon-400 font-semibold">Forge</span></span>
+            <span className="font-semibold text-sm text-mist-100 tracking-tight">PERSONAKILN</span>
           </div>
 
           <div className="flex items-center gap-2">

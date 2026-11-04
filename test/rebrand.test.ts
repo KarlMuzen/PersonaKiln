@@ -106,10 +106,10 @@ describe('rebrand', () => {
     );
     expect(new Uint8Array(decrypted)).toEqual(masterKey);
 
-    expect(capturedCreateOptions.publicKey?.rp?.name).toBe('Roleplay Forge');
-    expect(capturedCreateOptions.publicKey?.user?.name).toBe('roleplayforge_user');
+    expect(capturedCreateOptions.publicKey?.rp?.name).toBe('PersonaKiln');
+    expect(capturedCreateOptions.publicKey?.user?.name).toBe('personakiln_user');
     expect(capturedCreateOptions.publicKey?.user?.displayName).toBe(
-      'Roleplay Forge User',
+      'PersonaKiln User',
     );
   });
 
@@ -146,6 +146,55 @@ describe('rebrand', () => {
       if (existsSync(full) && pattern.test(readFileSync(full, 'utf8'))) {
         hits.push(full);
       }
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('the old brand name is gone except for the three frozen strings', () => {
+    const root = fileURLToPath(new URL('..', import.meta.url));
+    // Built from two pieces so this file does not itself match the pattern.
+    const pattern = new RegExp('roleplay' + '[ _-]?forge', 'i');
+    // Exactly three frozen strings are allowed, each in its own file, plus
+    // the tests that reference them. They are stripped before scanning, so
+    // any other occurrence in any scanned file is a failure.
+    const frozen = [
+      'RoleplayForgeDB',
+      'RoleplayForgeVerifier',
+      'RoleplayForge-Passkey-Wrap-v1',
+    ];
+    const binaryExtensions = new Set([
+      'png', 'jpg', 'jpeg', 'gif', 'ico', 'webp', 'avif',
+      'woff', 'woff2', 'ttf', 'otf', 'eot',
+      'mp3', 'mp4', 'zip', 'gz', 'pdf', 'wasm', 'bin', 'dat',
+    ]);
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.isFile()) {
+          const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+          if (binaryExtensions.has(ext)) continue;
+          let text = readFileSync(full, 'utf8');
+          for (const allowed of frozen) text = text.split(allowed).join('');
+          if (pattern.test(text)) hits.push(full);
+        }
+      }
+    };
+    for (const dir of ['src', 'test', 'public', 'scripts']) {
+      const full = join(root, dir);
+      if (existsSync(full) && statSync(full).isDirectory()) walk(full);
+    }
+    // package.json and package-lock.json are intentionally not scanned here:
+    // their repository URL still names the repository, not the visible
+    // brand, and their package name fields are already the new brand.
+    for (const file of ['index.html', 'vite.config.ts', 'metadata.json']) {
+      const full = join(root, file);
+      if (!existsSync(full)) continue;
+      let text = readFileSync(full, 'utf8');
+      for (const allowed of frozen) text = text.split(allowed).join('');
+      if (pattern.test(text)) hits.push(full);
     }
     expect(hits).toEqual([]);
   });

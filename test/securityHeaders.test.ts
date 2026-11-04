@@ -30,6 +30,6 @@ describe('security headers', () => {
   });
 
   it('theme bootstrap keeps the persisted theme key', () => {
-    expect(read('public/theme-init.js')).toContain('roleplay-forge-theme');
+    expect(read('public/theme-init.js')).toContain('personakiln-theme');
   });
 });
